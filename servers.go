@@ -4,7 +4,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/faceit/go-steam/netutil"
+	"github.com/13k/go-steam/netutil"
 )
 
 // CMServers contains a list of worlwide servers

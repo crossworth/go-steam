@@ -3,7 +3,7 @@ package inventory
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/faceit/go-steam/steamid"
+	"github.com/13k/go-steam/steamid"
 	"io/ioutil"
 	"net/http"
 	"regexp"

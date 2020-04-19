@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/faceit/go-steam/protocol/steamlang"
+	"github.com/13k/go-steam/protocol/steamlang"
 )
 
 // SteamId is a steam identifier.

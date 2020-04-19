@@ -4,8 +4,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/faceit/go-steam/steamid"
-	"github.com/faceit/go-steam/trade/tradeapi"
+	"github.com/13k/go-steam/steamid"
+	"github.com/13k/go-steam/trade/tradeapi"
 )
 
 const pollTimeout = time.Second

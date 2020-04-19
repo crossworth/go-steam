@@ -11,9 +11,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/faceit/go-steam"
-	"github.com/faceit/go-steam/gsbot"
-	"github.com/faceit/go-steam/protocol/steamlang"
+	"github.com/13k/go-steam"
+	"github.com/13k/go-steam/gsbot"
+	"github.com/13k/go-steam/protocol/steamlang"
 )
 
 func main() {
