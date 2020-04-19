@@ -5,9 +5,9 @@ package tf2
 
 import (
 	"github.com/13k/go-steam"
-	. "github.com/13k/go-steam/protocol/gamecoordinator"
-	. "github.com/13k/go-steam/tf2/protocol"
-	"github.com/13k/go-steam/tf2/protocol/protobuf"
+	pbtf2 "github.com/13k/go-steam-resources/protobuf/tf2"
+	gc "github.com/13k/go-steam/protocol/gamecoordinator"
+	"github.com/13k/go-steam/tf2/protocol"
 )
 
 const AppId = 440
@@ -34,42 +34,42 @@ func (t *TF2) SetPlaying(playing bool) {
 }
 
 func (t *TF2) SetItemPosition(itemId, position uint64) {
-	t.client.GC.Write(NewGCMsg(AppId, uint32(protobuf.EGCItemMsg_k_EMsgGCSetSingleItemPosition), &MsgGCSetItemPosition{
+	t.client.GC.Write(gc.NewGCMsg(AppId, uint32(pbtf2.EGCItemMsg_k_EMsgGCSetSingleItemPosition), &protocol.MsgGCSetItemPosition{
 		itemId, position,
 	}))
 }
 
 // recipe -2 = wildcard
 func (t *TF2) CraftItems(items []uint64, recipe int16) {
-	t.client.GC.Write(NewGCMsg(AppId, uint32(protobuf.EGCItemMsg_k_EMsgGCCraft), &MsgGCCraft{
+	t.client.GC.Write(gc.NewGCMsg(AppId, uint32(pbtf2.EGCItemMsg_k_EMsgGCCraft), &protocol.MsgGCCraft{
 		Recipe: recipe,
 		Items:  items,
 	}))
 }
 
 func (t *TF2) DeleteItem(itemId uint64) {
-	t.client.GC.Write(NewGCMsg(AppId, uint32(protobuf.EGCItemMsg_k_EMsgGCDelete), &MsgGCDeleteItem{itemId}))
+	t.client.GC.Write(gc.NewGCMsg(AppId, uint32(pbtf2.EGCItemMsg_k_EMsgGCDelete), &protocol.MsgGCDeleteItem{itemId}))
 }
 
 func (t *TF2) NameItem(toolId, target uint64, name string) {
-	t.client.GC.Write(NewGCMsg(AppId, uint32(protobuf.EGCItemMsg_k_EMsgGCNameItem), &MsgGCNameItem{
+	t.client.GC.Write(gc.NewGCMsg(AppId, uint32(pbtf2.EGCItemMsg_k_EMsgGCNameItem), &protocol.MsgGCNameItem{
 		toolId, target, name,
 	}))
 }
 
 type GCReadyEvent struct{}
 
-func (t *TF2) HandleGCPacket(packet *GCPacket) {
+func (t *TF2) HandleGCPacket(packet *gc.GCPacket) {
 	if packet.AppId != AppId {
 		return
 	}
-	switch protobuf.EGCBaseClientMsg(packet.MsgType) {
-	case protobuf.EGCBaseClientMsg_k_EMsgGCClientWelcome:
+	switch pbtf2.EGCBaseClientMsg(packet.MsgType) {
+	case pbtf2.EGCBaseClientMsg_k_EMsgGCClientWelcome:
 		t.handleWelcome(packet)
 	}
 }
 
-func (t *TF2) handleWelcome(packet *GCPacket) {
+func (t *TF2) handleWelcome(packet *gc.GCPacket) {
 	// the packet's body is pretty useless
 	t.client.Emit(&GCReadyEvent{})
 }

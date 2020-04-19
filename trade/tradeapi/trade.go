@@ -7,15 +7,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/13k/go-steam/community"
-	"github.com/13k/go-steam/economy/inventory"
-	"github.com/13k/go-steam/netutil"
-	"github.com/13k/go-steam/steamid"
 	"io/ioutil"
 	"net/http"
 	"regexp"
 	"strconv"
 	"time"
+
+	"github.com/13k/go-steam/community"
+	"github.com/13k/go-steam/economy/inventory"
+	"github.com/13k/go-steam/netutil"
+	"github.com/13k/go-steam/steamid"
 )
 
 const tradeUrl = "https://steamcommunity.com/trade/%d/"

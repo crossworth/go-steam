@@ -12,8 +12,8 @@ import (
 	"os"
 
 	"github.com/13k/go-steam"
+	"github.com/13k/go-steam-resources/steamlang"
 	"github.com/13k/go-steam/gsbot"
-	"github.com/13k/go-steam/protocol/steamlang"
 )
 
 func main() {
@@ -21,24 +21,31 @@ func main() {
 		fmt.Println("gsbot example\nusage: \n\tgsbot [username] [password] [authcode]")
 		return
 	}
+
 	authcode := ""
+
 	if len(os.Args) > 3 {
 		authcode = os.Args[3]
 	}
 
 	bot := gsbot.Default()
 	client := bot.Client
-	auth := gsbot.NewAuth(bot, &gsbot.LogOnDetails{
-		os.Args[1],
-		os.Args[2],
-		authcode,
-	}, "sentry.bin")
+	credentials := &gsbot.LogOnDetails{
+		Username: os.Args[1],
+		Password: os.Args[2],
+		AuthCode: authcode,
+	}
+
+	auth := gsbot.NewAuth(bot, credentials, "sentry.bin")
 	debug, err := gsbot.NewDebug(bot, "debug")
+
 	if err != nil {
 		panic(err)
 	}
+
 	client.RegisterPacketHandler(debug)
 	serverList := gsbot.NewServerList(bot, "serverlist.json")
+
 	serverList.Connect()
 
 	for event := range client.Events() {

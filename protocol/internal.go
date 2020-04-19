@@ -5,7 +5,7 @@ import (
 	"math"
 	"strconv"
 
-	. "github.com/13k/go-steam/protocol/steamlang"
+	"github.com/13k/go-steam-resources/steamlang"
 )
 
 type JobId uint64
@@ -32,13 +32,14 @@ type Serializable interface {
 
 type MessageBody interface {
 	Serializable
-	GetEMsg() EMsg
+	GetEMsg() steamlang.EMsg
 }
 
-// the default details to request in most situations
-const EClientPersonaStateFlag_DefaultInfoRequest = EClientPersonaStateFlag_PlayerName |
-	EClientPersonaStateFlag_Presence | EClientPersonaStateFlag_SourceID |
-	EClientPersonaStateFlag_GameExtraInfo
+// The default details to request in most situations
+const DefaultPersonaStateFlagInfoRequest = steamlang.EClientPersonaStateFlag_PlayerName |
+	steamlang.EClientPersonaStateFlag_Presence |
+	steamlang.EClientPersonaStateFlag_SourceID |
+	steamlang.EClientPersonaStateFlag_GameExtraInfo
 
 const DefaultAvatar = "fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb"
 

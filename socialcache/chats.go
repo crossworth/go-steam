@@ -2,9 +2,10 @@ package socialcache
 
 import (
 	"errors"
-	. "github.com/13k/go-steam/protocol/steamlang"
-	"github.com/13k/go-steam/steamid"
 	"sync"
+
+	"github.com/13k/go-steam-resources/steamlang"
+	"github.com/13k/go-steam/steamid"
 )
 
 // Chats list is a thread safe map
@@ -106,6 +107,6 @@ type Chat struct {
 // A Chat Member
 type ChatMember struct {
 	SteamId         steamid.SteamId `json:",string"`
-	ChatPermissions EChatPermission
-	ClanPermissions EClanPermission
+	ChatPermissions steamlang.EChatPermission
+	ClanPermissions steamlang.EClanPermission
 }

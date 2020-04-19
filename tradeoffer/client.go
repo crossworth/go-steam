@@ -3,14 +3,15 @@ package tradeoffer
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/13k/go-steam/community"
-	"github.com/13k/go-steam/economy/inventory"
-	"github.com/13k/go-steam/netutil"
-	"github.com/13k/go-steam/steamid"
 	"io/ioutil"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/13k/go-steam/community"
+	"github.com/13k/go-steam/economy/inventory"
+	"github.com/13k/go-steam/netutil"
+	"github.com/13k/go-steam/steamid"
 )
 
 type APIKey string

@@ -5,9 +5,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	. "github.com/13k/go-steam/protocol"
-	. "github.com/13k/go-steam/protocol/protobuf"
-	. "github.com/13k/go-steam/protocol/steamlang"
+	pb "github.com/13k/go-steam-resources/protobuf/steam"
+	"github.com/13k/go-steam-resources/steamlang"
+	"github.com/13k/go-steam/protocol"
 	"github.com/13k/go-steam/steamid"
 	"github.com/golang/protobuf/proto"
 )
@@ -57,7 +57,7 @@ func (a *Auth) LogOn(details *LogOnDetails) {
 		panic("Password or LoginKey must be set!")
 	}
 
-	logon := new(CMsgClientLogon)
+	logon := &pb.CMsgClientLogon{}
 	logon.AccountName = &details.Username
 	logon.Password = &details.Password
 	if details.AuthCode != "" {
@@ -67,7 +67,7 @@ func (a *Auth) LogOn(details *LogOnDetails) {
 		logon.TwoFactorCode = proto.String(details.TwoFactorCode)
 	}
 	logon.ClientLanguage = proto.String("english")
-	logon.ProtocolVersion = proto.Uint32(MsgClientLogon_CurrentProtocol)
+	logon.ProtocolVersion = proto.Uint32(steamlang.MsgClientLogon_CurrentProtocol)
 	logon.ShaSentryfile = details.SentryFileHash
 	if details.LoginKey != "" {
 		logon.LoginKey = proto.String(details.LoginKey)
@@ -76,41 +76,41 @@ func (a *Auth) LogOn(details *LogOnDetails) {
 		logon.ShouldRememberPassword = proto.Bool(details.ShouldRememberPassword)
 	}
 
-	atomic.StoreUint64(&a.client.steamId, steamid.NewIdAdv(0, 1, int32(EUniverse_Public), EAccountType_Individual).ToUint64())
+	atomic.StoreUint64(&a.client.steamId, steamid.NewIdAdv(0, 1, int32(steamlang.EUniverse_Public), steamlang.EAccountType_Individual).ToUint64())
 
-	a.client.Write(NewClientMsgProtobuf(EMsg_ClientLogon, logon))
+	a.client.Write(protocol.NewClientMsgProtobuf(steamlang.EMsg_ClientLogon, logon))
 }
 
-func (a *Auth) HandlePacket(packet *Packet) {
+func (a *Auth) HandlePacket(packet *protocol.Packet) {
 	switch packet.EMsg {
-	case EMsg_ClientLogOnResponse:
+	case steamlang.EMsg_ClientLogOnResponse:
 		a.handleLogOnResponse(packet)
-	case EMsg_ClientNewLoginKey:
+	case steamlang.EMsg_ClientNewLoginKey:
 		a.handleLoginKey(packet)
-	case EMsg_ClientSessionToken:
-	case EMsg_ClientLoggedOff:
+	case steamlang.EMsg_ClientSessionToken:
+	case steamlang.EMsg_ClientLoggedOff:
 		a.handleLoggedOff(packet)
-	case EMsg_ClientUpdateMachineAuth:
+	case steamlang.EMsg_ClientUpdateMachineAuth:
 		a.handleUpdateMachineAuth(packet)
-	case EMsg_ClientAccountInfo:
+	case steamlang.EMsg_ClientAccountInfo:
 		a.handleAccountInfo(packet)
-	case EMsg_ClientWalletInfoUpdate:
-	case EMsg_ClientRequestWebAPIAuthenticateUserNonceResponse:
-	case EMsg_ClientMarketingMessageUpdate:
+	case steamlang.EMsg_ClientWalletInfoUpdate:
+	case steamlang.EMsg_ClientRequestWebAPIAuthenticateUserNonceResponse:
+	case steamlang.EMsg_ClientMarketingMessageUpdate:
 	}
 }
 
-func (a *Auth) handleLogOnResponse(packet *Packet) {
+func (a *Auth) handleLogOnResponse(packet *protocol.Packet) {
 	if !packet.IsProto {
 		a.client.Fatalf("Got non-proto logon response!")
 		return
 	}
 
-	body := new(CMsgClientLogonResponse)
+	body := &pb.CMsgClientLogonResponse{}
 	msg := packet.ReadProtoMsg(body)
 
-	result := EResult(body.GetEresult())
-	if result == EResult_OK {
+	result := steamlang.EResult(body.GetEresult())
+	if result == steamlang.EResult_OK {
 		atomic.StoreInt32(&a.client.sessionId, msg.Header.Proto.GetClientSessionid())
 		atomic.StoreUint64(&a.client.steamId, msg.Header.Proto.GetSteamid())
 		a.client.Web.webLoginKey = *body.WebapiAuthenticateUserNonce
@@ -118,75 +118,80 @@ func (a *Auth) handleLogOnResponse(packet *Packet) {
 		go a.client.heartbeatLoop(time.Duration(body.GetOutOfGameHeartbeatSeconds()))
 
 		a.client.Emit(&LoggedOnEvent{
-			Result:         EResult(body.GetEresult()),
-			ExtendedResult: EResult(body.GetEresultExtended()),
-			AccountFlags:   EAccountFlags(body.GetAccountFlags()),
+			Result:         steamlang.EResult(body.GetEresult()),
+			ExtendedResult: steamlang.EResult(body.GetEresultExtended()),
+			AccountFlags:   steamlang.EAccountFlags(body.GetAccountFlags()),
 			ClientSteamId:  steamid.SteamId(body.GetClientSuppliedSteamid()),
 			Body:           body,
 		})
-	} else if result == EResult_Fail || result == EResult_ServiceUnavailable || result == EResult_TryAnotherCM {
+	} else if result == steamlang.EResult_Fail || result == steamlang.EResult_ServiceUnavailable || result == steamlang.EResult_TryAnotherCM {
 		// some error on Steam's side, we'll get an EOF later
 		a.client.Emit(&SteamFailureEvent{
-			Result: EResult(body.GetEresult()),
+			Result: steamlang.EResult(body.GetEresult()),
 		})
 	} else {
 		a.client.Emit(&LogOnFailedEvent{
-			Result: EResult(body.GetEresult()),
+			Result: steamlang.EResult(body.GetEresult()),
 		})
 		a.client.Disconnect()
 	}
 }
 
-func (a *Auth) handleLoginKey(packet *Packet) {
-	body := new(CMsgClientNewLoginKey)
+func (a *Auth) handleLoginKey(packet *protocol.Packet) {
+	body := &pb.CMsgClientNewLoginKey{}
 	packet.ReadProtoMsg(body)
-	a.client.Write(NewClientMsgProtobuf(EMsg_ClientNewLoginKeyAccepted, &CMsgClientNewLoginKeyAccepted{
+
+	a.client.Write(protocol.NewClientMsgProtobuf(steamlang.EMsg_ClientNewLoginKeyAccepted, &pb.CMsgClientNewLoginKeyAccepted{
 		UniqueId: proto.Uint32(body.GetUniqueId()),
 	}))
+
 	a.client.Emit(&LoginKeyEvent{
 		UniqueId: body.GetUniqueId(),
 		LoginKey: body.GetLoginKey(),
 	})
 }
 
-func (a *Auth) handleLoggedOff(packet *Packet) {
-	result := EResult_Invalid
+func (a *Auth) handleLoggedOff(packet *protocol.Packet) {
+	result := steamlang.EResult_Invalid
+
 	if packet.IsProto {
-		body := new(CMsgClientLoggedOff)
+		body := &pb.CMsgClientLoggedOff{}
 		packet.ReadProtoMsg(body)
-		result = EResult(body.GetEresult())
+		result = steamlang.EResult(body.GetEresult())
 	} else {
-		body := new(MsgClientLoggedOff)
+		body := &steamlang.MsgClientLoggedOff{}
 		packet.ReadClientMsg(body)
 		result = body.Result
 	}
+
 	a.client.Emit(&LoggedOffEvent{Result: result})
 }
 
-func (a *Auth) handleUpdateMachineAuth(packet *Packet) {
-	body := new(CMsgClientUpdateMachineAuth)
+func (a *Auth) handleUpdateMachineAuth(packet *protocol.Packet) {
+	body := &pb.CMsgClientUpdateMachineAuth{}
 	packet.ReadProtoMsg(body)
 	hash := sha1.New()
 	hash.Write(packet.Data)
 	sha := hash.Sum(nil)
 
-	msg := NewClientMsgProtobuf(EMsg_ClientUpdateMachineAuthResponse, &CMsgClientUpdateMachineAuthResponse{
+	msg := protocol.NewClientMsgProtobuf(steamlang.EMsg_ClientUpdateMachineAuthResponse, &pb.CMsgClientUpdateMachineAuthResponse{
 		ShaFile: sha,
 	})
-	msg.SetTargetJobId(packet.SourceJobId)
-	a.client.Write(msg)
 
+	msg.SetTargetJobId(packet.SourceJobId)
+
+	a.client.Write(msg)
 	a.client.Emit(&MachineAuthUpdateEvent{sha})
 }
 
-func (a *Auth) handleAccountInfo(packet *Packet) {
-	body := new(CMsgClientAccountInfo)
+func (a *Auth) handleAccountInfo(packet *protocol.Packet) {
+	body := &pb.CMsgClientAccountInfo{}
 	packet.ReadProtoMsg(body)
 	a.client.Emit(&AccountInfoEvent{
 		PersonaName:          body.GetPersonaName(),
 		Country:              body.GetIpCountry(),
 		CountAuthedComputers: body.GetCountAuthedComputers(),
-		AccountFlags:         EAccountFlags(body.GetAccountFlags()),
+		AccountFlags:         steamlang.EAccountFlags(body.GetAccountFlags()),
 		FacebookId:           body.GetFacebookId(),
 		FacebookName:         body.GetFacebookName(),
 	})

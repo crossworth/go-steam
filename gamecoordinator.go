@@ -2,10 +2,11 @@ package steam
 
 import (
 	"bytes"
-	. "github.com/13k/go-steam/protocol"
-	. "github.com/13k/go-steam/protocol/gamecoordinator"
-	. "github.com/13k/go-steam/protocol/protobuf"
-	. "github.com/13k/go-steam/protocol/steamlang"
+
+	pb "github.com/13k/go-steam-resources/protobuf/steam"
+	"github.com/13k/go-steam-resources/steamlang"
+	"github.com/13k/go-steam/protocol"
+	gc "github.com/13k/go-steam/protocol/gamecoordinator"
 	"github.com/golang/protobuf/proto"
 )
 
@@ -22,22 +23,24 @@ func newGC(client *Client) *GameCoordinator {
 }
 
 type GCPacketHandler interface {
-	HandleGCPacket(*GCPacket)
+	HandleGCPacket(*gc.GCPacket)
 }
 
 func (g *GameCoordinator) RegisterPacketHandler(handler GCPacketHandler) {
 	g.handlers = append(g.handlers, handler)
 }
 
-func (g *GameCoordinator) HandlePacket(packet *Packet) {
-	if packet.EMsg != EMsg_ClientFromGC {
+func (g *GameCoordinator) HandlePacket(packet *protocol.Packet) {
+	if packet.EMsg != steamlang.EMsg_ClientFromGC {
 		return
 	}
 
-	msg := new(CMsgGCClient)
+	msg := &pb.CMsgGCClient{}
+
 	packet.ReadProtoMsg(msg)
 
-	p, err := NewGCPacket(msg)
+	p, err := gc.NewGCPacket(msg)
+
 	if err != nil {
 		g.client.Errorf("Error reading GC message: %v", err)
 		return
@@ -48,16 +51,18 @@ func (g *GameCoordinator) HandlePacket(packet *Packet) {
 	}
 }
 
-func (g *GameCoordinator) Write(msg IGCMsg) {
-	buf := new(bytes.Buffer)
+func (g *GameCoordinator) Write(msg gc.IGCMsg) {
+	buf := &bytes.Buffer{}
+
 	msg.Serialize(buf)
 
 	msgType := msg.GetMsgType()
+
 	if msg.IsProto() {
 		msgType = msgType | 0x80000000 // mask with protoMask
 	}
 
-	g.client.Write(NewClientMsgProtobuf(EMsg_ClientToGC, &CMsgGCClient{
+	g.client.Write(protocol.NewClientMsgProtobuf(steamlang.EMsg_ClientToGC, &pb.CMsgGCClient{
 		Msgtype: proto.Uint32(msgType),
 		Appid:   proto.Uint32(msg.GetAppId()),
 		Payload: buf.Bytes(),
@@ -66,14 +71,15 @@ func (g *GameCoordinator) Write(msg IGCMsg) {
 
 // Sets you in the given games. Specify none to quit all games.
 func (g *GameCoordinator) SetGamesPlayed(appIds ...uint64) {
-	games := make([]*CMsgClientGamesPlayed_GamePlayed, 0)
+	games := make([]*pb.CMsgClientGamesPlayed_GamePlayed, 0)
+
 	for _, appId := range appIds {
-		games = append(games, &CMsgClientGamesPlayed_GamePlayed{
+		games = append(games, &pb.CMsgClientGamesPlayed_GamePlayed{
 			GameId: proto.Uint64(appId),
 		})
 	}
 
-	g.client.Write(NewClientMsgProtobuf(EMsg_ClientGamesPlayed, &CMsgClientGamesPlayed{
+	g.client.Write(protocol.NewClientMsgProtobuf(steamlang.EMsg_ClientGamesPlayed, &pb.CMsgClientGamesPlayed{
 		GamesPlayed: games,
 	}))
 }

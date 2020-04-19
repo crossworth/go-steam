@@ -1,7 +1,7 @@
 package steamid
 
 import (
-	"github.com/13k/go-steam/protocol/steamlang"
+	"github.com/13k/go-steam-resources/steamlang"
 )
 
 // accountTypeChars maps account type to steam3 id chars.

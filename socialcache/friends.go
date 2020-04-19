@@ -2,9 +2,10 @@ package socialcache
 
 import (
 	"errors"
-	. "github.com/13k/go-steam/protocol/steamlang"
-	"github.com/13k/go-steam/steamid"
 	"sync"
+
+	"github.com/13k/go-steam-resources/steamlang"
+	"github.com/13k/go-steam/steamid"
 )
 
 // FriendsList is a thread safe map
@@ -84,7 +85,7 @@ func (list *FriendsList) SetAvatar(id steamid.SteamId, hash string) {
 	}
 }
 
-func (list *FriendsList) SetRelationship(id steamid.SteamId, relationship EFriendRelationship) {
+func (list *FriendsList) SetRelationship(id steamid.SteamId, relationship steamlang.EFriendRelationship) {
 	list.mutex.Lock()
 	defer list.mutex.Unlock()
 	if val, ok := list.byId[id]; ok {
@@ -92,7 +93,7 @@ func (list *FriendsList) SetRelationship(id steamid.SteamId, relationship EFrien
 	}
 }
 
-func (list *FriendsList) SetPersonaState(id steamid.SteamId, state EPersonaState) {
+func (list *FriendsList) SetPersonaState(id steamid.SteamId, state steamlang.EPersonaState) {
 	list.mutex.Lock()
 	defer list.mutex.Unlock()
 	if val, ok := list.byId[id]; ok {
@@ -100,7 +101,7 @@ func (list *FriendsList) SetPersonaState(id steamid.SteamId, state EPersonaState
 	}
 }
 
-func (list *FriendsList) SetPersonaStateFlags(id steamid.SteamId, flags EPersonaStateFlag) {
+func (list *FriendsList) SetPersonaStateFlags(id steamid.SteamId, flags steamlang.EPersonaStateFlag) {
 	list.mutex.Lock()
 	defer list.mutex.Unlock()
 	if val, ok := list.byId[id]; ok {
@@ -137,9 +138,9 @@ type Friend struct {
 	SteamId           steamid.SteamId `json:",string"`
 	Name              string
 	Avatar            string
-	Relationship      EFriendRelationship
-	PersonaState      EPersonaState
-	PersonaStateFlags EPersonaStateFlag
+	Relationship      steamlang.EFriendRelationship
+	PersonaState      steamlang.EPersonaState
+	PersonaStateFlags steamlang.EPersonaStateFlag
 	GameAppId         uint32
 	GameId            uint64 `json:",string"`
 	GameName          string

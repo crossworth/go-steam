@@ -1,21 +1,21 @@
 package steam
 
 import (
-	"github.com/13k/go-steam/protocol/protobuf"
-	. "github.com/13k/go-steam/protocol/steamlang"
+	pb "github.com/13k/go-steam-resources/protobuf/steam"
+	"github.com/13k/go-steam-resources/steamlang"
 	"github.com/13k/go-steam/steamid"
 )
 
 type LoggedOnEvent struct {
-	Result         EResult
-	ExtendedResult EResult
-	AccountFlags   EAccountFlags
+	Result         steamlang.EResult
+	ExtendedResult steamlang.EResult
+	AccountFlags   steamlang.EAccountFlags
 	ClientSteamId  steamid.SteamId `json:",string"`
-	Body           *protobuf.CMsgClientLogonResponse
+	Body           *pb.CMsgClientLogonResponse
 }
 
 type LogOnFailedEvent struct {
-	Result EResult
+	Result steamlang.EResult
 }
 
 type LoginKeyEvent struct {
@@ -24,7 +24,7 @@ type LoginKeyEvent struct {
 }
 
 type LoggedOffEvent struct {
-	Result EResult
+	Result steamlang.EResult
 }
 
 type MachineAuthUpdateEvent struct {
@@ -35,7 +35,7 @@ type AccountInfoEvent struct {
 	PersonaName          string
 	Country              string
 	CountAuthedComputers int32
-	AccountFlags         EAccountFlags
+	AccountFlags         steamlang.EAccountFlags
 	FacebookId           uint64 `json:",string"`
 	FacebookName         string
 }
@@ -43,5 +43,5 @@ type AccountInfoEvent struct {
 // Returned when Steam is down for some reason.
 // A disconnect will follow, probably.
 type SteamFailureEvent struct {
-	Result EResult
+	Result steamlang.EResult
 }
