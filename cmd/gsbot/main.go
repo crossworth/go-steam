@@ -31,7 +31,7 @@ func main() {
 
 	bot := gsbot.Default()
 	client := bot.Client
-	credentials := &gsbot.LogOnDetails{
+	credentials := &steam.LogOnDetails{
 		Username: os.Args[1],
 		Password: os.Args[2],
 		AuthCode: authcode,

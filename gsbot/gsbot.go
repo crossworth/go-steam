@@ -60,13 +60,6 @@ func (bot *GsBot) RegisterEventHandler(handler EventHandler) {
 	bot.handlers = append(bot.handlers, handler)
 }
 
-type LogOnDetails struct {
-	Username      string
-	Password      string
-	AuthCode      string
-	TwoFactorCode string
-}
-
 // Auth module handles authentication.
 //
 // It logs on automatically after a ConnectedEvent and saves the sentry data to a file which is also
@@ -76,18 +69,18 @@ type LogOnDetails struct {
 // with the new logon details.
 type Auth struct {
 	bot             *GsBot
-	details         *LogOnDetails
+	credentials     *steam.LogOnDetails
 	sentryPath      string
 	machineAuthHash []byte
 }
 
 var _ EventHandler = (*Auth)(nil)
 
-func NewAuth(bot *GsBot, details *LogOnDetails, sentryPath string) *Auth {
+func NewAuth(bot *GsBot, credentials *steam.LogOnDetails, sentryPath string) *Auth {
 	auth := &Auth{
-		bot:        bot,
-		details:    details,
-		sentryPath: sentryPath,
+		bot:         bot,
+		credentials: credentials,
+		sentryPath:  sentryPath,
 	}
 
 	bot.RegisterEventHandler(auth)
@@ -100,27 +93,28 @@ const fmtErrSentryRead = "Error loading sentry file from path %v - " +
 
 // LogOn is called automatically after every ConnectedEvent, but must be called once again manually
 // with an authcode if Steam requires it when logging on for the first time.
-func (a *Auth) LogOn(details *LogOnDetails) error {
-	a.details = details
+func (a *Auth) LogOn(credentials *steam.LogOnDetails) error {
+	a.credentials = credentials
 	sentry, err := ioutil.ReadFile(a.sentryPath)
 
 	if err != nil {
 		a.bot.Log.Printf(fmtErrSentryRead, a.sentryPath)
+		sentry = nil
 	}
 
 	return a.bot.Client.Auth.LogOn(&steam.LogOnDetails{
-		Username:       details.Username,
-		Password:       details.Password,
+		Username:       credentials.Username,
+		Password:       credentials.Password,
 		SentryFileHash: sentry,
-		AuthCode:       details.AuthCode,
-		TwoFactorCode:  details.TwoFactorCode,
+		AuthCode:       credentials.AuthCode,
+		TwoFactorCode:  credentials.TwoFactorCode,
 	})
 }
 
 func (a *Auth) HandleEvent(event interface{}) {
 	switch e := event.(type) {
 	case *steam.ConnectedEvent:
-		if err := a.LogOn(a.details); err != nil {
+		if err := a.LogOn(a.credentials); err != nil {
 			a.bot.Log.Fatalf("error writing sentry file: %v", err)
 		}
 	case *steam.LoggedOnEvent:
@@ -251,18 +245,23 @@ func (d *Debug) HandlePacket(packet *protocol.Packet) {
 	if err := ioutil.WriteFile(fname, packet.Data, 0666); err != nil {
 		d.bot.Log.Fatalf("error writing debug file %s: %v", fname, err)
 	}
+
+	d.bot.Log.Printf("received packet %s", packet.EMsg)
 }
 
 func (d *Debug) HandleEvent(event interface{}) {
 	d.eventID++
 
-	name := fmt.Sprintf("%d_%d_%s.txt", time.Now().Unix(), d.eventID, reflectName(event))
+	eventName := reflectName(event)
+	name := fmt.Sprintf("%d_%d_%s.txt", time.Now().Unix(), d.eventID, eventName)
 	fname := filepath.Join(d.dir, "events", name)
 	data := []byte(spew.Sdump(event))
 
 	if err := ioutil.WriteFile(fname, data, 0666); err != nil {
 		d.bot.Log.Fatalf("error writing debug file %s: %v", fname, err)
 	}
+
+	d.bot.Log.Printf("received event %s", eventName)
 }
 
 func reflectName(obj interface{}) string {
