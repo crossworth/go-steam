@@ -3,7 +3,6 @@ package steam
 import (
 	"crypto/sha1"
 	"errors"
-	"sync/atomic"
 	"time"
 
 	pb "github.com/13k/go-steam-resources/protobuf/steam"
@@ -82,9 +81,9 @@ func (a *Auth) LogOn(details *LogOnDetails) error {
 		logon.ShouldRememberPassword = proto.Bool(details.ShouldRememberPassword)
 	}
 
-	id := steamid.NewIdAdv(0, 1, int32(steamlang.EUniverse_Public), steamlang.EAccountType_Individual).ToUint64()
-	atomic.StoreUint64(&a.client.steamID, id)
+	id := steamid.NewIdAdv(0, 1, int32(steamlang.EUniverse_Public), steamlang.EAccountType_Individual)
 
+	a.client.setSteamID(id)
 	a.client.Write(protocol.NewClientMsgProtobuf(steamlang.EMsg_ClientLogon, logon))
 
 	return nil
@@ -96,16 +95,12 @@ func (a *Auth) HandlePacket(packet *protocol.Packet) {
 		a.handleLogOnResponse(packet)
 	case steamlang.EMsg_ClientNewLoginKey:
 		a.handleLoginKey(packet)
-	case steamlang.EMsg_ClientSessionToken:
 	case steamlang.EMsg_ClientLoggedOff:
 		a.handleLoggedOff(packet)
 	case steamlang.EMsg_ClientUpdateMachineAuth:
 		a.handleUpdateMachineAuth(packet)
 	case steamlang.EMsg_ClientAccountInfo:
 		a.handleAccountInfo(packet)
-	case steamlang.EMsg_ClientWalletInfoUpdate:
-	case steamlang.EMsg_ClientRequestWebAPIAuthenticateUserNonceResponse:
-	case steamlang.EMsg_ClientMarketingMessageUpdate:
 	}
 }
 
@@ -118,32 +113,26 @@ func (a *Auth) handleLogOnResponse(packet *protocol.Packet) {
 	body := &pb.CMsgClientLogonResponse{}
 	msg := packet.ReadProtoMsg(body)
 
-	result := steamlang.EResult(body.GetEresult())
-	if result == steamlang.EResult_OK {
-		atomic.StoreInt32(&a.client.sessionID, msg.Header.Proto.GetClientSessionid())
-		atomic.StoreUint64(&a.client.steamID, msg.Header.Proto.GetSteamid())
+	switch result := steamlang.EResult(body.GetEresult()); result {
+	case steamlang.EResult_OK:
+		a.client.setSessionID(msg.Header.Proto.GetClientSessionid())
+		a.client.setSteamID(steamid.SteamId(msg.Header.Proto.GetSteamid()))
 		a.client.Web.webLoginKey = *body.WebapiAuthenticateUserNonce
 
 		go a.client.heartbeatLoop(time.Duration(body.GetOutOfGameHeartbeatSeconds()))
 
 		a.client.Emit(&LoggedOnEvent{
-			Result:         steamlang.EResult(body.GetEresult()),
+			Result:         result,
 			ExtendedResult: steamlang.EResult(body.GetEresultExtended()),
 			AccountFlags:   steamlang.EAccountFlags(body.GetAccountFlags()),
 			ClientSteamId:  steamid.SteamId(body.GetClientSuppliedSteamid()),
 			Body:           body,
 		})
-	} else if result == steamlang.EResult_Fail ||
-		result == steamlang.EResult_ServiceUnavailable ||
-		result == steamlang.EResult_TryAnotherCM {
+	case steamlang.EResult_Fail, steamlang.EResult_ServiceUnavailable, steamlang.EResult_TryAnotherCM:
 		// some error on Steam's side, we'll get an EOF later
-		a.client.Emit(&SteamFailureEvent{
-			Result: steamlang.EResult(body.GetEresult()),
-		})
-	} else {
-		a.client.Emit(&LogOnFailedEvent{
-			Result: steamlang.EResult(body.GetEresult()),
-		})
+		a.client.Emit(&SteamFailureEvent{Result: result})
+	default:
+		a.client.Emit(&LogOnFailedEvent{Result: result})
 		a.client.Disconnect()
 	}
 }

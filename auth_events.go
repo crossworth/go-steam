@@ -40,8 +40,7 @@ type AccountInfoEvent struct {
 	FacebookName         string
 }
 
-// Returned when Steam is down for some reason.
-// A disconnect will follow, probably.
+// SteamFailureEvent is emitted when Steam is down for some reason.
 type SteamFailureEvent struct {
 	Result steamlang.EResult
 }

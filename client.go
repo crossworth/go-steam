@@ -120,9 +120,17 @@ func (c *Client) SteamId() steamid.SteamId {
 	return steamid.SteamId(atomic.LoadUint64(&c.steamID))
 }
 
+func (c *Client) setSteamID(steamID steamid.SteamId) {
+	atomic.StoreUint64(&c.steamID, steamID.ToUint64())
+}
+
 // SessionId returns the session id.
 func (c *Client) SessionId() int32 {
 	return atomic.LoadInt32(&c.sessionID)
+}
+
+func (c *Client) setSessionID(sessionID int32) {
+	atomic.StoreInt32(&c.sessionID, sessionID)
 }
 
 func (c *Client) Connected() bool {
