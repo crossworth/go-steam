@@ -79,7 +79,14 @@ func NewPacket(data []byte) (*Packet, error) {
 }
 
 func (p *Packet) String() string {
-	return fmt.Sprintf("Packet{EMsg = %v, Proto = %v, Len = %v, TargetJobId = %v, SourceJobId = %v}", p.EMsg, p.IsProto, len(p.Data), p.TargetJobId, p.SourceJobId)
+	return fmt.Sprintf(
+		"Packet{EMsg = %v, Proto = %v, Len = %v, TargetJobId = %v, SourceJobId = %v}",
+		p.EMsg,
+		p.IsProto,
+		len(p.Data),
+		p.TargetJobId,
+		p.SourceJobId,
+	)
 }
 
 func (p *Packet) ReadProtoMsg(body proto.Message) *ClientMsgProtobuf {

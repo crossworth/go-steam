@@ -40,7 +40,12 @@ func DoInventoryRequest(client *http.Client, req *http.Request) (*PartialInvento
 	return inv, nil
 }
 
-func GetFullInventory(getFirst func() (*PartialInventory, error), getNext func(start uint) (*PartialInventory, error)) (*Inventory, error) {
+// TODO: use only one iterator function and indicate the first page with start = 0
+
+func GetFullInventory(
+	getFirst func() (*PartialInventory, error),
+	getNext func(start uint) (*PartialInventory, error),
+) (*Inventory, error) {
 	first, err := getFirst()
 	if err != nil {
 		return nil, err

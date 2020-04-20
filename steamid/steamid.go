@@ -12,16 +12,18 @@ import (
 // SteamId is a steam identifier.
 type SteamId uint64
 
-func fromAccountId(id uint32) SteamId {
+func fromAccountID(id uint32) SteamId {
 	return NewIdAdv(id, 1, 1, 1)
 }
 
-func fromAccountIdStr(id string) (SteamId, error) {
-	accountId, err := strconv.ParseUint(id, 10, 32)
+func fromAccountIDStr(id string) (SteamId, error) {
+	accountID, err := strconv.ParseUint(id, 10, 32)
+
 	if err != nil {
 		return SteamId(0), err
 	}
-	return fromAccountId(uint32(accountId)), nil
+
+	return fromAccountID(uint32(accountID)), nil
 }
 
 // NewId attempts to parse the steam ID.
@@ -32,7 +34,7 @@ func NewId(id string) (SteamId, error) {
 	}
 	if valid {
 		id = id[5 : len(id)-1]
-		return fromAccountIdStr(id)
+		return fromAccountIDStr(id)
 	}
 
 	valid, err = regexp.MatchString(`STEAM_[0-5]:[01]:\d+`, id)
@@ -47,10 +49,10 @@ func NewId(id string) (SteamId, error) {
 			universe = int64(steamlang.EUniverse_Public)
 		}
 		authServer, _ := strconv.ParseUint(splitid[1], 10, 32)
-		accId, _ := strconv.ParseUint(splitid[2], 10, 32)
+		accID, _ := strconv.ParseUint(splitid[2], 10, 32)
 		accountType := steamlang.EAccountType_Individual
-		accountId := (uint32(accId) << 1) | uint32(authServer)
-		return NewIdAdv(uint32(accountId), 1, int32(universe), accountType), nil
+		accountID := (uint32(accID) << 1) | uint32(authServer)
+		return NewIdAdv(accountID, 1, int32(universe), accountType), nil
 	}
 
 	valid, err = regexp.MatchString(`^[0-9]{7,9}$`, id)
@@ -58,7 +60,7 @@ func NewId(id string) (SteamId, error) {
 		return SteamId(0), err
 	}
 	if valid {
-		return fromAccountIdStr(id)
+		return fromAccountIDStr(id)
 	}
 
 	newid, err := strconv.ParseUint(id, 10, 64)
@@ -92,9 +94,9 @@ func (s SteamId) String() string {
 	case 1: // EAccountType_Individual
 		if s.GetAccountUniverse() <= 1 { // EUniverse_Public
 			return fmt.Sprintf("STEAM_0:%d:%d", s.GetAccountId()&1, s.GetAccountId()>>1)
-		} else {
-			return fmt.Sprintf("STEAM_%d:%d:%d", s.GetAccountUniverse(), s.GetAccountId()&1, s.GetAccountId()>>1)
 		}
+
+		return fmt.Sprintf("STEAM_%d:%d:%d", s.GetAccountUniverse(), s.GetAccountId()&1, s.GetAccountId()>>1)
 	default:
 		return strconv.FormatUint(uint64(s), 10)
 	}
@@ -187,11 +189,8 @@ func (s SteamId) ToSteam3() string {
 
 	var renderInstance bool
 	switch accType {
-	case steamlang.EAccountType_AnonGameServer:
-		fallthrough
-	case steamlang.EAccountType_Multiseat:
+	case steamlang.EAccountType_AnonGameServer, steamlang.EAccountType_Multiseat:
 		renderInstance = true
-		break
 	case steamlang.EAccountType_Individual:
 		renderInstance = uint32(accInstance) != DesktopInstance
 	}

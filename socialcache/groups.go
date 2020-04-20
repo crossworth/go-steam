@@ -44,10 +44,13 @@ func (list *GroupsList) Remove(id steamid.SteamId) {
 func (list *GroupsList) GetCopy() map[steamid.SteamId]Group {
 	list.mutex.RLock()
 	defer list.mutex.RUnlock()
+
 	glist := make(map[steamid.SteamId]Group)
+
 	for key, group := range list.byId {
-		glist[steamid.SteamId(key)] = *group
+		glist[key] = *group
 	}
+
 	return glist
 }
 

@@ -30,12 +30,17 @@ type steamDirectory struct {
 func (sd *steamDirectory) Initialize() error {
 	sd.Lock()
 	defer sd.Unlock()
+
 	client := new(http.Client)
-	resp, err := client.Get(fmt.Sprintf("https://api.steampowered.com/ISteamDirectory/GetCMList/v1/?cellId=0"))
+
+	resp, err := client.Get("https://api.steampowered.com/ISteamDirectory/GetCMList/v1/?cellId=0")
+
 	if err != nil {
 		return err
 	}
+
 	defer resp.Body.Close()
+
 	r := struct {
 		Response struct {
 			ServerList []string
@@ -43,34 +48,41 @@ func (sd *steamDirectory) Initialize() error {
 			Message    string
 		}
 	}{}
+
 	if err = json.NewDecoder(resp.Body).Decode(&r); err != nil {
 		return err
 	}
+
 	if r.Response.Result != 1 {
-		return fmt.Errorf("Failed to get steam directory, result: %v, message: %v\n", r.Response.Result, r.Response.Message)
+		return fmt.Errorf("Failed to get steam directory, result: %v, message: %v", r.Response.Result, r.Response.Message)
 	}
+
 	if len(r.Response.ServerList) == 0 {
-		return fmt.Errorf("Steam returned zero servers for steam directory request\n")
+		return fmt.Errorf("Steam returned zero servers for steam directory request")
 	}
+
 	sd.servers = r.Response.ServerList
 	sd.isInitialized = true
+
 	return nil
 }
 
 func (sd *steamDirectory) GetRandomCM() *netutil.PortAddr {
 	sd.RLock()
 	defer sd.RUnlock()
+
 	if !sd.isInitialized {
 		panic("steam directory is not initialized")
 	}
+
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	addr := netutil.ParsePortAddr(sd.servers[rng.Int31n(int32(len(sd.servers)))])
+
 	return addr
 }
 
 func (sd *steamDirectory) IsInitialized() bool {
 	sd.RLock()
 	defer sd.RUnlock()
-	isInitialized := sd.isInitialized
-	return isInitialized
+	return sd.isInitialized
 }

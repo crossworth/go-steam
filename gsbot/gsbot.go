@@ -68,14 +68,19 @@ type LogOnDetails struct {
 	TwoFactorCode string
 }
 
+const fmtErrSentryRead = "Error loading sentry file from path %v - " +
+	"This is normal if you're logging in for the first time."
+
 // This is called automatically after every ConnectedEvent, but must be called once again manually
 // with an authcode if Steam requires it when logging on for the first time.
 func (a *Auth) LogOn(details *LogOnDetails) {
 	a.details = details
 	sentry, err := ioutil.ReadFile(a.sentryPath)
+
 	if err != nil {
-		a.bot.Log.Printf("Error loading sentry file from path %v - This is normal if you're logging in for the first time.\n", a.sentryPath)
+		a.bot.Log.Printf(fmtErrSentryRead, a.sentryPath)
 	}
+
 	a.bot.Client.Auth.LogOn(&steam.LogOnDetails{
 		Username:       details.Username,
 		Password:       details.Password,
@@ -152,7 +157,7 @@ func (s *ServerList) ConnectBind(laddr *net.TCPAddr) (bool, error) {
 
 // This module logs incoming packets and events to a directory.
 type Debug struct {
-	packetId, eventId uint64
+	packetID, eventID uint64
 	bot               *GsBot
 	base              string
 }
@@ -175,8 +180,8 @@ func NewDebug(bot *GsBot, base string) (*Debug, error) {
 }
 
 func (d *Debug) HandlePacket(packet *protocol.Packet) {
-	d.packetId++
-	name := path.Join(d.base, "packets", fmt.Sprintf("%d_%d_%s", time.Now().Unix(), d.packetId, packet.EMsg))
+	d.packetID++
+	name := path.Join(d.base, "packets", fmt.Sprintf("%d_%d_%s", time.Now().Unix(), d.packetID, packet.EMsg))
 
 	text := packet.String() + "\n\n" + hex.Dump(packet.Data)
 	err := ioutil.WriteFile(name+".txt", []byte(text), 0666)
@@ -191,8 +196,8 @@ func (d *Debug) HandlePacket(packet *protocol.Packet) {
 }
 
 func (d *Debug) HandleEvent(event interface{}) {
-	d.eventId++
-	name := fmt.Sprintf("%d_%d_%s.txt", time.Now().Unix(), d.eventId, name(event))
+	d.eventID++
+	name := fmt.Sprintf("%d_%d_%s.txt", time.Now().Unix(), d.eventID, name(event))
 	err := ioutil.WriteFile(path.Join(d.base, "events", name), []byte(spew.Sdump(event)), 0666)
 	if err != nil {
 		panic(err)
@@ -202,9 +207,10 @@ func (d *Debug) HandleEvent(event interface{}) {
 func name(obj interface{}) string {
 	val := reflect.ValueOf(obj)
 	ind := reflect.Indirect(val)
+
 	if ind.IsValid() {
 		return ind.Type().Name()
-	} else {
-		return val.Type().Name()
 	}
+
+	return val.Type().Name()
 }

@@ -13,8 +13,7 @@ import (
 )
 
 type Auth struct {
-	client  *Client
-	details *LogOnDetails
+	client *Client
 }
 
 type SentryHash []byte
@@ -53,6 +52,7 @@ func (a *Auth) LogOn(details *LogOnDetails) {
 	if details.Username == "" {
 		panic("Username must be set!")
 	}
+
 	if details.Password == "" && details.LoginKey == "" {
 		panic("Password or LoginKey must be set!")
 	}
@@ -60,23 +60,29 @@ func (a *Auth) LogOn(details *LogOnDetails) {
 	logon := &pb.CMsgClientLogon{}
 	logon.AccountName = &details.Username
 	logon.Password = &details.Password
+
 	if details.AuthCode != "" {
 		logon.AuthCode = proto.String(details.AuthCode)
 	}
+
 	if details.TwoFactorCode != "" {
 		logon.TwoFactorCode = proto.String(details.TwoFactorCode)
 	}
+
 	logon.ClientLanguage = proto.String("english")
 	logon.ProtocolVersion = proto.Uint32(steamlang.MsgClientLogon_CurrentProtocol)
 	logon.ShaSentryfile = details.SentryFileHash
+
 	if details.LoginKey != "" {
 		logon.LoginKey = proto.String(details.LoginKey)
 	}
+
 	if details.ShouldRememberPassword {
 		logon.ShouldRememberPassword = proto.Bool(details.ShouldRememberPassword)
 	}
 
-	atomic.StoreUint64(&a.client.steamId, steamid.NewIdAdv(0, 1, int32(steamlang.EUniverse_Public), steamlang.EAccountType_Individual).ToUint64())
+	id := steamid.NewIdAdv(0, 1, int32(steamlang.EUniverse_Public), steamlang.EAccountType_Individual).ToUint64()
+	atomic.StoreUint64(&a.client.steamID, id)
 
 	a.client.Write(protocol.NewClientMsgProtobuf(steamlang.EMsg_ClientLogon, logon))
 }
@@ -111,8 +117,8 @@ func (a *Auth) handleLogOnResponse(packet *protocol.Packet) {
 
 	result := steamlang.EResult(body.GetEresult())
 	if result == steamlang.EResult_OK {
-		atomic.StoreInt32(&a.client.sessionId, msg.Header.Proto.GetClientSessionid())
-		atomic.StoreUint64(&a.client.steamId, msg.Header.Proto.GetSteamid())
+		atomic.StoreInt32(&a.client.sessionID, msg.Header.Proto.GetClientSessionid())
+		atomic.StoreUint64(&a.client.steamID, msg.Header.Proto.GetSteamid())
 		a.client.Web.webLoginKey = *body.WebapiAuthenticateUserNonce
 
 		go a.client.heartbeatLoop(time.Duration(body.GetOutOfGameHeartbeatSeconds()))
@@ -124,7 +130,9 @@ func (a *Auth) handleLogOnResponse(packet *protocol.Packet) {
 			ClientSteamId:  steamid.SteamId(body.GetClientSuppliedSteamid()),
 			Body:           body,
 		})
-	} else if result == steamlang.EResult_Fail || result == steamlang.EResult_ServiceUnavailable || result == steamlang.EResult_TryAnotherCM {
+	} else if result == steamlang.EResult_Fail ||
+		result == steamlang.EResult_ServiceUnavailable ||
+		result == steamlang.EResult_TryAnotherCM {
 		// some error on Steam's side, we'll get an EOF later
 		a.client.Emit(&SteamFailureEvent{
 			Result: steamlang.EResult(body.GetEresult()),
@@ -141,9 +149,11 @@ func (a *Auth) handleLoginKey(packet *protocol.Packet) {
 	body := &pb.CMsgClientNewLoginKey{}
 	packet.ReadProtoMsg(body)
 
-	a.client.Write(protocol.NewClientMsgProtobuf(steamlang.EMsg_ClientNewLoginKeyAccepted, &pb.CMsgClientNewLoginKeyAccepted{
+	pbAccepted := &pb.CMsgClientNewLoginKeyAccepted{
 		UniqueId: proto.Uint32(body.GetUniqueId()),
-	}))
+	}
+
+	a.client.Write(protocol.NewClientMsgProtobuf(steamlang.EMsg_ClientNewLoginKeyAccepted, pbAccepted))
 
 	a.client.Emit(&LoginKeyEvent{
 		UniqueId: body.GetUniqueId(),
@@ -152,7 +162,7 @@ func (a *Auth) handleLoginKey(packet *protocol.Packet) {
 }
 
 func (a *Auth) handleLoggedOff(packet *protocol.Packet) {
-	result := steamlang.EResult_Invalid
+	var result steamlang.EResult
 
 	if packet.IsProto {
 		body := &pb.CMsgClientLoggedOff{}
@@ -171,12 +181,19 @@ func (a *Auth) handleUpdateMachineAuth(packet *protocol.Packet) {
 	body := &pb.CMsgClientUpdateMachineAuth{}
 	packet.ReadProtoMsg(body)
 	hash := sha1.New()
-	hash.Write(packet.Data)
+
+	if _, err := hash.Write(packet.Data); err != nil {
+		// FIXME: don't panic
+		panic(err)
+	}
+
 	sha := hash.Sum(nil)
 
-	msg := protocol.NewClientMsgProtobuf(steamlang.EMsg_ClientUpdateMachineAuthResponse, &pb.CMsgClientUpdateMachineAuthResponse{
+	pbAuthRes := &pb.CMsgClientUpdateMachineAuthResponse{
 		ShaFile: sha,
-	})
+	}
+
+	msg := protocol.NewClientMsgProtobuf(steamlang.EMsg_ClientUpdateMachineAuthResponse, pbAuthRes)
 
 	msg.SetTargetJobId(packet.SourceJobId)
 

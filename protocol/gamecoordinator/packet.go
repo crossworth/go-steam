@@ -27,27 +27,35 @@ func NewGCPacket(wrapper *pb.CMsgGCClient) (*GCPacket, error) {
 	}
 
 	r := bytes.NewReader(wrapper.GetPayload())
+
 	if steamlang.IsProto(wrapper.GetMsgtype()) {
 		packet.MsgType = packet.MsgType & steamlang.EMsgMask
 		packet.IsProto = true
 
 		header := steamlang.NewMsgGCHdrProtoBuf()
 		err := header.Deserialize(r)
+
 		if err != nil {
 			return nil, err
 		}
+
 		packet.TargetJobId = protocol.JobId(header.Proto.GetJobidTarget())
 	} else {
 		header := steamlang.NewMsgGCHdr()
-		err := header.Deserialize(r)
-		if err != nil {
+
+		if err := header.Deserialize(r); err != nil {
 			return nil, err
 		}
+
 		packet.TargetJobId = protocol.JobId(header.TargetJobID)
 	}
 
 	body := make([]byte, r.Len())
-	r.Read(body)
+
+	if _, err := r.Read(body); err != nil {
+		return nil, err
+	}
+
 	packet.Body = body
 
 	return packet, nil

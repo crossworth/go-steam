@@ -25,7 +25,7 @@ type Web struct {
 	// The `sessionid` cookie required to use the steam website.
 	// This cookie may contain a characters that will need to be URL-escaped, otherwise
 	// Steam (probably) interprets is as a string.
-	// When used as an URL paramter this is automatically escaped by the Go HTTP package.
+	// When used as an URL parameter this is automatically escaped by the Go HTTP package.
 	SessionId string
 	// The `steamLogin` cookie required to use the steam website. Already URL-escaped.
 	// This is only available after calling LogOn().
@@ -73,7 +73,10 @@ func (w *Web) LogOn() {
 
 func (w *Web) apiLogOn() error {
 	sessionKey := make([]byte, 32)
-	rand.Read(sessionKey)
+
+	if _, err := rand.Read(sessionKey); err != nil {
+		return err
+	}
 
 	cryptedSessionKey := cryptoutil.RSAEncrypt(GetPublicKey(steamlang.EUniverse_Public), sessionKey)
 	ciph, _ := aes.NewCipher(sessionKey)
@@ -96,7 +99,8 @@ func (w *Web) apiLogOn() error {
 	if resp.StatusCode == 401 {
 		// our web login key has expired, request a new one
 		atomic.StoreUint32(&w.relogOnNonce, 1)
-		w.client.Write(protocol.NewClientMsgProtobuf(steamlang.EMsg_ClientRequestWebAPIAuthenticateUserNonce, &pb.CMsgClientRequestWebAPIAuthenticateUserNonce{}))
+		msg := &pb.CMsgClientRequestWebAPIAuthenticateUserNonce{}
+		w.client.Write(protocol.NewClientMsgProtobuf(steamlang.EMsg_ClientRequestWebAPIAuthenticateUserNonce, msg))
 		return nil
 	} else if resp.StatusCode != 200 {
 		return errors.New("steam.Web.apiLogOn: request failed with status " + resp.Status)
@@ -127,9 +131,11 @@ func (w *Web) handleNewLoginKey(packet *protocol.Packet) {
 	msg := &pb.CMsgClientNewLoginKey{}
 	packet.ReadProtoMsg(msg)
 
-	w.client.Write(protocol.NewClientMsgProtobuf(steamlang.EMsg_ClientNewLoginKeyAccepted, &pb.CMsgClientNewLoginKeyAccepted{
+	acceptMsg := &pb.CMsgClientNewLoginKeyAccepted{
 		UniqueId: proto.Uint32(msg.GetUniqueId()),
-	}))
+	}
+
+	w.client.Write(protocol.NewClientMsgProtobuf(steamlang.EMsg_ClientNewLoginKeyAccepted, acceptMsg))
 
 	// number -> string -> bytes -> base64
 	w.SessionId = base64.StdEncoding.EncodeToString([]byte(strconv.FormatUint(uint64(msg.GetUniqueId()), 10)))

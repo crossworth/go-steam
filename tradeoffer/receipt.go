@@ -2,7 +2,7 @@ package tradeoffer
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
 	"regexp"
 
 	"github.com/13k/go-steam/economy/inventory"
@@ -17,20 +17,27 @@ type TradeReceiptItem struct {
 	inventory.Description
 }
 
+var receiptItemRE = regexp.MustCompile(`oItem =\s+(.+?});`)
+
 func parseTradeReceipt(data []byte) ([]*TradeReceiptItem, error) {
-	reg := regexp.MustCompile("oItem =\\s+(.+?});")
-	itemMatches := reg.FindAllSubmatch(data, -1)
+	itemMatches := receiptItemRE.FindAllSubmatch(data, -1)
+
 	if itemMatches == nil {
-		return nil, fmt.Errorf("items not found\n")
+		return nil, errors.New("items not found")
 	}
+
 	items := make([]*TradeReceiptItem, 0, len(itemMatches))
+
 	for _, m := range itemMatches {
 		item := new(TradeReceiptItem)
 		err := json.Unmarshal(m[1], &item)
+
 		if err != nil {
 			return nil, err
 		}
+
 		items = append(items, item)
 	}
+
 	return items, nil
 }

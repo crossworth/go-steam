@@ -8,13 +8,13 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-// Provides access to the Steam client's part of Steam Trading, that is bootstrapping
-// the trade.
-// The trade itself is not handled by the Steam client itself, but it's a part of
-// the Steam website.
+// Trading provides access to the Steam client's part of Steam Trading, that is bootstrapping the
+// trade.
 //
-// You'll receive a TradeProposedEvent when a friend proposes a trade. You can accept it with
-// the RespondRequest method. You can request a trade yourself with RequestTrade.
+// The trade itself is not handled by the Steam client itself, but it's a part of the Steam website.
+//
+// You'll receive a TradeProposedEvent when a friend proposes a trade. You can accept it with the
+// RespondRequest method. You can request a trade yourself with RequestTrade.
 type Trading struct {
 	client *Client
 }
@@ -55,29 +55,34 @@ func (t *Trading) HandlePacket(packet *protocol.Packet) {
 // Requests a trade. You'll receive a TradeResultEvent if the request fails or
 // if the friend accepted the trade.
 func (t *Trading) RequestTrade(other steamid.SteamId) {
-	t.client.Write(protocol.NewClientMsgProtobuf(steamlang.EMsg_EconTrading_InitiateTradeRequest, &pb.CMsgTrading_InitiateTradeRequest{
+	pbmsg := &pb.CMsgTrading_InitiateTradeRequest{
 		OtherSteamid: proto.Uint64(uint64(other)),
-	}))
+	}
+
+	t.client.Write(protocol.NewClientMsgProtobuf(steamlang.EMsg_EconTrading_InitiateTradeRequest, pbmsg))
 }
 
 // Responds to a TradeProposedEvent.
 func (t *Trading) RespondRequest(requestId TradeRequestId, accept bool) {
 	var resp uint32
-	if accept {
-		resp = 0
-	} else {
+
+	if !accept {
 		resp = 1
 	}
 
-	t.client.Write(protocol.NewClientMsgProtobuf(steamlang.EMsg_EconTrading_InitiateTradeResponse, &pb.CMsgTrading_InitiateTradeResponse{
+	pbmsg := &pb.CMsgTrading_InitiateTradeResponse{
 		TradeRequestId: proto.Uint32(uint32(requestId)),
 		Response:       proto.Uint32(resp),
-	}))
+	}
+
+	t.client.Write(protocol.NewClientMsgProtobuf(steamlang.EMsg_EconTrading_InitiateTradeResponse, pbmsg))
 }
 
 // This cancels a request made with RequestTrade.
 func (t *Trading) CancelRequest(other steamid.SteamId) {
-	t.client.Write(protocol.NewClientMsgProtobuf(steamlang.EMsg_EconTrading_CancelTradeRequest, &pb.CMsgTrading_CancelTradeRequest{
+	pbmsg := &pb.CMsgTrading_CancelTradeRequest{
 		OtherSteamid: proto.Uint64(uint64(other)),
-	}))
+	}
+
+	t.client.Write(protocol.NewClientMsgProtobuf(steamlang.EMsg_EconTrading_CancelTradeRequest, pbmsg))
 }

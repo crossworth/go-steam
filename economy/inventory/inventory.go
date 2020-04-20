@@ -20,27 +20,33 @@ func NewGenericInventory() GenericInventory {
 }
 
 // Get inventory for specified AppId and ContextId
-func (i *GenericInventory) Get(appId uint32, contextId uint64) (*Inventory, error) {
+func (i *GenericInventory) Get(appID uint32, contextID uint64) (*Inventory, error) {
 	iMap := (map[uint32]map[uint64]*Inventory)(*i)
-	iMap2, ok := iMap[appId]
+	iMap2, ok := iMap[appID]
+
 	if !ok {
 		return nil, fmt.Errorf("inventory for specified appId not found")
 	}
-	inv, ok := iMap2[contextId]
+
+	inv, ok := iMap2[contextID]
+
 	if !ok {
 		return nil, fmt.Errorf("inventory for specified contextId not found")
 	}
+
 	return inv, nil
 }
 
-func (i *GenericInventory) Add(appId uint32, contextId uint64, inv *Inventory) {
+func (i *GenericInventory) Add(appID uint32, contextID uint64, inv *Inventory) {
 	iMap := (map[uint32]map[uint64]*Inventory)(*i)
-	iMap2, ok := iMap[appId]
+	iMap2, ok := iMap[appID]
+
 	if !ok {
 		iMap2 = make(map[uint64]*Inventory)
-		iMap[appId] = iMap2
+		iMap[appID] = iMap2
 	}
-	iMap2[contextId] = inv
+
+	iMap2[contextID] = inv
 }
 
 type Inventory struct {
@@ -57,11 +63,13 @@ func (i *Items) ToMap() map[string]*Item {
 	return (map[string]*Item)(*i)
 }
 
-func (i *Items) Get(assetId uint64) (*Item, error) {
+func (i *Items) Get(assetID uint64) (*Item, error) {
 	iMap := (map[string]*Item)(*i)
-	if item, ok := iMap[strconv.FormatUint(assetId, 10)]; ok {
+
+	if item, ok := iMap[strconv.FormatUint(assetID, 10)]; ok {
 		return item, nil
 	}
+
 	return nil, fmt.Errorf("item not found")
 }
 
@@ -69,6 +77,7 @@ func (i *Items) UnmarshalJSON(data []byte) error {
 	if bytes.Equal(data, []byte("[]")) {
 		return nil
 	}
+
 	return json.Unmarshal(data, (*map[string]*Item)(i))
 }
 
@@ -82,6 +91,7 @@ func (c *Currencies) UnmarshalJSON(data []byte) error {
 	if bytes.Equal(data, []byte("[]")) {
 		return nil
 	}
+
 	return json.Unmarshal(data, (*map[string]*Currency)(c))
 }
 
@@ -92,12 +102,14 @@ func (d *Descriptions) ToMap() map[string]*Description {
 	return (map[string]*Description)(*d)
 }
 
-func (d *Descriptions) Get(classId uint64, instanceId uint64) (*Description, error) {
+func (d *Descriptions) Get(classID uint64, instanceID uint64) (*Description, error) {
 	dMap := (map[string]*Description)(*d)
-	descId := fmt.Sprintf("%v_%v", classId, instanceId)
-	if desc, ok := dMap[descId]; ok {
+	descID := fmt.Sprintf("%v_%v", classID, instanceID)
+
+	if desc, ok := dMap[descID]; ok {
 		return desc, nil
 	}
+
 	return nil, fmt.Errorf("description not found")
 }
 
@@ -105,6 +117,7 @@ func (d *Descriptions) UnmarshalJSON(data []byte) error {
 	if bytes.Equal(data, []byte("[]")) {
 		return nil
 	}
+
 	return json.Unmarshal(data, (*map[string]*Description)(d))
 }
 

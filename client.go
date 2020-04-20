@@ -29,10 +29,10 @@ import (
 // Other errors don't have any effect.
 type Client struct {
 	// these need to be 64 bit aligned for sync/atomic on 32bit
-	sessionId    int32
+	sessionID    int32
 	_            uint32
-	steamId      uint64
-	currentJobId uint64
+	steamID      uint64
+	currentJobID uint64
 
 	Auth          *Auth
 	Social        *Social
@@ -112,17 +112,17 @@ func (c *Client) RegisterPacketHandler(handler PacketHandler) {
 
 // GetNextJobId returns the next job ID to use.
 func (c *Client) GetNextJobId() protocol.JobId {
-	return protocol.JobId(atomic.AddUint64(&c.currentJobId, 1))
+	return protocol.JobId(atomic.AddUint64(&c.currentJobID, 1))
 }
 
 // SteamId returns the client's steam ID.
 func (c *Client) SteamId() steamid.SteamId {
-	return steamid.SteamId(atomic.LoadUint64(&c.steamId))
+	return steamid.SteamId(atomic.LoadUint64(&c.steamID))
 }
 
 // SessionId returns the session id.
 func (c *Client) SessionId() int32 {
-	return atomic.LoadInt32(&c.sessionId)
+	return atomic.LoadInt32(&c.sessionID)
 }
 
 func (c *Client) Connected() bool {
@@ -196,13 +196,16 @@ func (c *Client) Disconnect() {
 func (c *Client) Write(msg protocol.IMsg) {
 	if cm, ok := msg.(protocol.IClientMsg); ok {
 		cm.SetSessionId(c.SessionId())
-		cm.SetSteamId(steamid.SteamId(c.SteamId()))
+		cm.SetSteamId(c.SteamId())
 	}
+
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
+
 	if c.conn == nil {
 		return
 	}
+
 	c.writeChan <- msg
 }
 
@@ -212,15 +215,18 @@ func (c *Client) readLoop() {
 		c.mutex.RLock()
 		conn := c.conn
 		c.mutex.RUnlock()
+
 		if conn == nil {
 			return
 		}
+
 		packet, err := conn.Read()
 
 		if err != nil {
 			c.Fatalf("Error reading from the connection: %v", err)
 			return
 		}
+
 		c.handlePacket(packet)
 	}
 }
@@ -296,16 +302,24 @@ func (c *Client) handleChannelEncryptRequest(packet *protocol.Packet) {
 	packet.ReadMsg(body)
 
 	if body.Universe != steamlang.EUniverse_Public {
-		c.Fatalf("Invalid univserse %v!", body.Universe)
+		c.Fatalf("Invalid universe %v!", body.Universe)
 	}
 
 	c.tempSessionKey = make([]byte, 32)
-	rand.Read(c.tempSessionKey)
+
+	if _, err := rand.Read(c.tempSessionKey); err != nil {
+		c.Fatalf("handleChannelEncryptRequest: Error while creating session key: %v", err)
+	}
+
 	encryptedKey := cryptoutil.RSAEncrypt(GetPublicKey(steamlang.EUniverse_Public), c.tempSessionKey)
 
 	payload := new(bytes.Buffer)
 	payload.Write(encryptedKey)
-	binary.Write(payload, binary.LittleEndian, crc32.ChecksumIEEE(encryptedKey))
+
+	if err := binary.Write(payload, binary.LittleEndian, crc32.ChecksumIEEE(encryptedKey)); err != nil {
+		c.Fatalf("handleChannelEncryptRequest: Error while creating encrypted response payload: %v", err)
+	}
+
 	payload.WriteByte(0)
 	payload.WriteByte(0)
 	payload.WriteByte(0)
@@ -322,6 +336,7 @@ func (c *Client) handleChannelEncryptResult(packet *protocol.Packet) {
 		c.Fatalf("Encryption failed: %v", body.Result)
 		return
 	}
+
 	c.conn.SetEncryptionKey(c.tempSessionKey)
 	c.tempSessionKey = nil
 
@@ -336,12 +351,14 @@ func (c *Client) handleMulti(packet *protocol.Packet) {
 
 	if body.GetSizeUnzipped() > 0 {
 		r, err := gzip.NewReader(bytes.NewReader(payload))
+
 		if err != nil {
 			c.Errorf("handleMulti: Error while decompressing: %v", err)
 			return
 		}
 
 		payload, err = ioutil.ReadAll(r)
+
 		if err != nil {
 			c.Errorf("handleMulti: Error while decompressing: %v", err)
 			return
@@ -349,16 +366,29 @@ func (c *Client) handleMulti(packet *protocol.Packet) {
 	}
 
 	pr := bytes.NewReader(payload)
+
 	for pr.Len() > 0 {
 		var length uint32
-		binary.Read(pr, binary.LittleEndian, &length)
+
+		if err := binary.Read(pr, binary.LittleEndian, &length); err != nil {
+			c.Errorf("Error reading packet in Multi msg %v: %v", packet, err)
+			return
+		}
+
 		packetData := make([]byte, length)
-		pr.Read(packetData)
+
+		if _, err := pr.Read(packetData); err != nil {
+			c.Errorf("Error reading packet in Multi msg %v: %v", packet, err)
+			return
+		}
+
 		p, err := protocol.NewPacket(packetData)
+
 		if err != nil {
 			c.Errorf("Error reading packet in Multi msg %v: %v", packet, err)
 			continue
 		}
+
 		c.handlePacket(p)
 	}
 }

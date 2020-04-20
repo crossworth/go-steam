@@ -41,28 +41,35 @@ func (e *EventList) UnmarshalJSON(data []byte) error {
 	}
 
 	o := make(map[string]*Event)
-	err := json.Unmarshal(data, &o)
+
 	// it's an object
-	if err == nil {
+	if err := json.Unmarshal(data, &o); err == nil {
 		for is, event := range o {
-			i, err := strconv.ParseUint(is, 10, 32)
+			var i uint64
+
+			i, err = strconv.ParseUint(is, 10, 32)
+
 			if err != nil {
-				panic(err)
+				return err
 			}
+
 			(*e)[uint(i)] = event
 		}
+
 		return nil
 	}
 
-	// it's an array
+	// it should be an array
 	var a []*Event
-	err = json.Unmarshal(data, &a)
-	if err != nil {
+
+	if err := json.Unmarshal(data, &a); err != nil {
 		return err
 	}
+
 	for i, event := range a {
 		(*e)[uint(i)] = event
 	}
+
 	return nil
 }
 

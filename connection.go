@@ -58,7 +58,7 @@ func (c *tcpConnection) Read() (*protocol.Packet, error) {
 		return nil, fmt.Errorf("Invalid connection magic! Expected %d, got %d!", tcpConnectionMagic, packetMagic)
 	}
 
-	buf := make([]byte, packetLen, packetLen)
+	buf := make([]byte, packetLen)
 	_, err = io.ReadFull(c.conn, buf)
 	if err == io.ErrUnexpectedEOF {
 		return nil, io.EOF

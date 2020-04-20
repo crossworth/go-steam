@@ -20,13 +20,13 @@ type Trade struct {
 	api          *tradeapi.Trade
 }
 
-func New(sessionId, steamLogin, steamLoginSecure string, other steamid.SteamId) *Trade {
+func New(sessionID, steamLogin, steamLoginSecure string, other steamid.SteamId) *Trade {
 	return &Trade{
 		other,
 		false, false,
 		time.Unix(0, 0),
 		nil,
-		tradeapi.New(sessionId, steamLogin, steamLoginSecure, other),
+		tradeapi.New(sessionID, steamLogin, steamLoginSecure, other),
 	}
 }
 
@@ -48,9 +48,8 @@ func (t *Trade) onStatus(status *tradeapi.Status) error {
 
 	if status.NewVersion {
 		t.api.Version = status.Version
-
-		t.MeReady = status.Me.Ready == true
-		t.ThemReady = status.Them.Ready == true
+		t.MeReady = bool(status.Me.Ready)
+		t.ThemReady = bool(status.Them.Ready)
 	}
 
 	switch status.TradeStatus {
@@ -78,10 +77,12 @@ func (t *Trade) updateEvents(events tradeapi.EventList) {
 	}
 
 	var lastLogPos uint
+
 	for i, event := range events {
 		if i < t.api.LogPos {
 			continue
 		}
+
 		if event.SteamId != t.ThemId {
 			continue
 		}
@@ -114,7 +115,7 @@ func (t *Trade) updateEvents(events tradeapi.EventList) {
 		}
 	}
 
-	t.api.LogPos = uint(lastLogPos) + 1
+	t.api.LogPos = lastLogPos + 1
 }
 
 func (t *Trade) addEvent(event interface{}) {

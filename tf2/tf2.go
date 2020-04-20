@@ -33,10 +33,13 @@ func (t *TF2) SetPlaying(playing bool) {
 	}
 }
 
-func (t *TF2) SetItemPosition(itemId, position uint64) {
-	t.client.GC.Write(gc.NewGCMsg(AppId, uint32(pbtf2.EGCItemMsg_k_EMsgGCSetSingleItemPosition), &protocol.MsgGCSetItemPosition{
-		itemId, position,
-	}))
+func (t *TF2) SetItemPosition(itemID, position uint64) {
+	gcMsg := gc.NewGCMsg(AppId, uint32(pbtf2.EGCItemMsg_k_EMsgGCSetSingleItemPosition), &protocol.MsgGCSetItemPosition{
+		AssetId:  itemID,
+		Position: position,
+	})
+
+	t.client.GC.Write(gcMsg)
 }
 
 // recipe -2 = wildcard
@@ -47,13 +50,19 @@ func (t *TF2) CraftItems(items []uint64, recipe int16) {
 	}))
 }
 
-func (t *TF2) DeleteItem(itemId uint64) {
-	t.client.GC.Write(gc.NewGCMsg(AppId, uint32(pbtf2.EGCItemMsg_k_EMsgGCDelete), &protocol.MsgGCDeleteItem{itemId}))
+func (t *TF2) DeleteItem(itemID uint64) {
+	gcMsg := gc.NewGCMsg(AppId, uint32(pbtf2.EGCItemMsg_k_EMsgGCDelete), &protocol.MsgGCDeleteItem{
+		ItemId: itemID,
+	})
+
+	t.client.GC.Write(gcMsg)
 }
 
-func (t *TF2) NameItem(toolId, target uint64, name string) {
+func (t *TF2) NameItem(toolID, target uint64, name string) {
 	t.client.GC.Write(gc.NewGCMsg(AppId, uint32(pbtf2.EGCItemMsg_k_EMsgGCNameItem), &protocol.MsgGCNameItem{
-		toolId, target, name,
+		Tool:   toolID,
+		Target: target,
+		Name:   name,
 	}))
 }
 
@@ -69,7 +78,7 @@ func (t *TF2) HandleGCPacket(packet *gc.GCPacket) {
 	}
 }
 
-func (t *TF2) handleWelcome(packet *gc.GCPacket) {
+func (t *TF2) handleWelcome(_ *gc.GCPacket) {
 	// the packet's body is pretty useless
 	t.client.Emit(&GCReadyEvent{})
 }

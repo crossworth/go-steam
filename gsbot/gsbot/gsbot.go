@@ -46,7 +46,9 @@ func main() {
 	client.RegisterPacketHandler(debug)
 	serverList := gsbot.NewServerList(bot, "serverlist.json")
 
-	serverList.Connect()
+	if _, err := serverList.Connect(); err != nil {
+		panic(err)
+	}
 
 	for event := range client.Events() {
 		auth.HandleEvent(event)

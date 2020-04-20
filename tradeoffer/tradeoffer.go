@@ -15,17 +15,32 @@ import (
 type TradeOfferState uint
 
 const (
-	TradeOfferState_Invalid                  TradeOfferState = 1  // Invalid
-	TradeOfferState_Active                                   = 2  // This trade offer has been sent, neither party has acted on it yet.
-	TradeOfferState_Accepted                                 = 3  // The trade offer was accepted by the recipient and items were exchanged.
-	TradeOfferState_Countered                                = 4  // The recipient made a counter offer
-	TradeOfferState_Expired                                  = 5  // The trade offer was not accepted before the expiration date
-	TradeOfferState_Canceled                                 = 6  // The sender cancelled the offer
-	TradeOfferState_Declined                                 = 7  // The recipient declined the offer
-	TradeOfferState_InvalidItems                             = 8  // Some of the items in the offer are no longer available (indicated by the missing flag in the output)
-	TradeOfferState_CreatedNeedsConfirmation                 = 9  // The offer hasn't been sent yet and is awaiting email/mobile confirmation. The offer is only visible to the sender.
-	TradeOfferState_CanceledBySecondFactor                   = 10 // Either party canceled the offer via email/mobile. The offer is visible to both parties, even if the sender canceled it before it was sent.
-	TradeOfferState_InEscrow                                 = 11 // The trade has been placed on hold. The items involved in the trade have all been removed from both parties' inventories and will be automatically delivered in the future.
+	// Invalid
+	TradeOfferState_Invalid TradeOfferState = 1
+	// This trade offer has been sent, neither party has acted on it yet.
+	TradeOfferState_Active TradeOfferState = 2
+	// The trade offer was accepted by the recipient and items were exchanged.
+	TradeOfferState_Accepted TradeOfferState = 3
+	// The recipient made a counter offer
+	TradeOfferState_Countered TradeOfferState = 4
+	// The trade offer was not accepted before the expiration date
+	TradeOfferState_Expired TradeOfferState = 5
+	// The sender canceled the offer
+	TradeOfferState_Canceled TradeOfferState = 6
+	// The recipient declined the offer
+	TradeOfferState_Declined TradeOfferState = 7
+	// Some of the items in the offer are no longer available (indicated by the missing flag in the
+	// output)
+	TradeOfferState_InvalidItems TradeOfferState = 8
+	// The offer hasn't been sent yet and is awaiting email/mobile confirmation. The offer is only
+	// visible to the sender.
+	TradeOfferState_CreatedNeedsConfirmation TradeOfferState = 9
+	// Either party canceled the offer via email/mobile. The offer is visible to both parties, even if
+	// the sender canceled it before it was sent.
+	TradeOfferState_CanceledBySecondFactor TradeOfferState = 10
+	// The trade has been placed on hold. The items involved in the trade have all been removed from
+	// both parties' inventories and will be automatically delivered in the future.
+	TradeOfferState_InEscrow TradeOfferState = 11
 )
 
 type TradeOfferConfirmationMethod uint
