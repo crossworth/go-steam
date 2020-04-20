@@ -36,7 +36,7 @@ type Trade struct {
 // New creates a new Trade based on the given cookies `sessionid`, `steamLogin`, `steamLoginSecure` and
 // the trade partner's Steam ID.
 func New(sessionID, steamLogin, steamLoginSecure string, other steamid.SteamId) *Trade {
-	client := new(http.Client)
+	client := &http.Client{}
 	client.Timeout = 10 * time.Second
 
 	t := &Trade{
@@ -87,7 +87,7 @@ func (t *Trade) GetMain() (*Main, error) {
 
 // Ajax POSTs to an API endpoint that should return a status
 func (t *Trade) postWithStatus(url string, data map[string]string) (*Status, error) {
-	status := new(Status)
+	status := &Status{}
 
 	req := netutil.NewPostForm(url, netutil.ToUrlValues(data))
 	// Tales of Madness and Pain, Episode 1: If you forget this, Steam will return an error

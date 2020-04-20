@@ -10,7 +10,7 @@ const cookiePath = "https://steamcommunity.com/"
 
 func SetCookies(client *http.Client, sessionID, steamLogin, steamLoginSecure string) {
 	if client.Jar == nil {
-		client.Jar, _ = cookiejar.New(new(cookiejar.Options))
+		client.Jar, _ = cookiejar.New(nil)
 	}
 
 	base, err := url.Parse(cookiePath)

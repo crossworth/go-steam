@@ -98,10 +98,10 @@ func (t *Trade) updateEvents(events tradeapi.EventList) {
 			t.addEvent(&ItemRemovedEvent{newItem(event)})
 		case tradeapi.Action_Ready:
 			t.ThemReady = true
-			t.addEvent(new(ReadyEvent))
+			t.addEvent(&ReadyEvent{})
 		case tradeapi.Action_Unready:
 			t.ThemReady = false
-			t.addEvent(new(UnreadyEvent))
+			t.addEvent(&UnreadyEvent{})
 		case tradeapi.Action_SetCurrency:
 			t.addEvent(&SetCurrencyEvent{
 				newCurrency(event),

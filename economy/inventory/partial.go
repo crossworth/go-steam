@@ -32,7 +32,7 @@ func DoInventoryRequest(client *http.Client, req *http.Request) (*PartialInvento
 	}
 	defer resp.Body.Close()
 
-	inv := new(PartialInventory)
+	inv := &PartialInventory{}
 	err = json.NewDecoder(resp.Body).Decode(inv)
 	if err != nil {
 		return nil, err

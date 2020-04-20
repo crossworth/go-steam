@@ -176,10 +176,12 @@ func (s *Social) JoinChat(id steamid.SteamId) {
 // TODO: handle errors
 func (s *Social) LeaveChat(id steamid.SteamId) {
 	chatID := id.ClanToChat()
-	payload := new(bytes.Buffer)
+	payload := &bytes.Buffer{}
+
 	_ = binary.Write(payload, binary.LittleEndian, s.client.SteamId().ToUint64())                 // ChatterActedOn
 	_ = binary.Write(payload, binary.LittleEndian, uint32(steamlang.EChatMemberStateChange_Left)) // StateChange
 	_ = binary.Write(payload, binary.LittleEndian, s.client.SteamId().ToUint64())                 // ChatterActedBy
+
 	s.client.Write(protocol.NewClientMsg(&steamlang.MsgClientChatMemberInfo{
 		SteamIdChat: chatID.ToUint64(),
 		Type:        steamlang.EChatInfoType_StateChange,
@@ -676,7 +678,7 @@ func (s *Social) handleProfileInfoResponse(packet *protocol.Packet) {
 
 /*
 func (s *Social) handleFriendMessageHistoryResponse(packet *Packet) {
-	body := new(CMsgClientFSGetFriendMessageHistoryResponse)
+	body := &CMsgClientFSGetFriendMessageHistoryResponse{}
 	packet.ReadProtoMsg(body)
 	steamid := SteamId(body.GetSteamid())
 	for _, message := range body.GetMessages() {

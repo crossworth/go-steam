@@ -27,7 +27,7 @@ type Client struct {
 
 func NewClient(key APIKey, sessionID, steamLogin, steamLoginSecure string) *Client {
 	c := &Client{
-		client:    new(http.Client),
+		client:    &http.Client{},
 		key:       key,
 		sessionID: sessionID,
 	}
@@ -50,9 +50,9 @@ func (c *Client) GetOffer(offerID uint64) (*TradeOfferResult, error) {
 
 	defer resp.Body.Close()
 
-	t := new(struct {
+	t := &struct {
 		Response *TradeOfferResult
-	})
+	}{}
 
 	if err = json.NewDecoder(resp.Body).Decode(t); err != nil {
 		return nil, err
@@ -80,39 +80,52 @@ func (c *Client) GetOffers(
 	params := map[string]string{
 		"key": string(c.key),
 	}
+
 	if getSent {
 		params["get_sent_offers"] = "1"
 	}
+
 	if getReceived {
 		params["get_received_offers"] = "1"
 	}
+
 	if getDescriptions {
 		params["get_descriptions"] = "1"
 		params["language"] = "en_us"
 	}
+
 	if activeOnly {
 		params["active_only"] = "1"
 	}
+
 	if historicalOnly {
 		params["historical_only"] = "1"
 	}
+
 	if timeHistoricalCutoff != nil {
 		params["time_historical_cutoff"] = strconv.FormatUint(uint64(*timeHistoricalCutoff), 10)
 	}
+
 	resp, err := c.client.Get(fmt.Sprintf(apiURL, "GetTradeOffers", 1) + "?" + netutil.ToUrlValues(params).Encode())
+
 	if err != nil {
 		return nil, err
 	}
+
 	defer resp.Body.Close()
-	t := new(struct {
+
+	t := &struct {
 		Response *TradeOffersResult
-	})
+	}{}
+
 	if err = json.NewDecoder(resp.Body).Decode(t); err != nil {
 		return nil, err
 	}
+
 	if t.Response == nil {
 		return nil, newSteamErrorf("steam returned empty offers result\n")
 	}
+
 	return t.Response, nil
 }
 
@@ -172,9 +185,9 @@ func (c *Client) Accept(offerID uint64) error {
 
 	defer resp.Body.Close()
 
-	t := new(struct {
+	t := &struct {
 		StrError string `json:"strError"`
-	})
+	}{}
 
 	if err = json.NewDecoder(resp.Body).Decode(t); err != nil {
 		return err
@@ -285,10 +298,10 @@ func (c *Client) Create(
 
 	defer resp.Body.Close()
 
-	t := new(struct {
+	t := &struct {
 		StrError     string `json:"strError"`
 		TradeOfferID uint64 `json:"tradeofferid,string"`
-	})
+	}{}
 
 	if err = json.NewDecoder(resp.Body).Decode(t); err != nil {
 		return 0, err

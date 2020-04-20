@@ -106,12 +106,12 @@ func (w *Web) apiLogOn() error {
 		return errors.New("steam.Web.apiLogOn: request failed with status " + resp.Status)
 	}
 
-	result := new(struct {
+	result := &struct {
 		Authenticateuser struct {
 			Token       string
 			TokenSecure string
 		}
-	})
+	}{}
 
 	err = json.NewDecoder(resp.Body).Decode(result)
 
@@ -122,7 +122,7 @@ func (w *Web) apiLogOn() error {
 	w.SteamLogin = result.Authenticateuser.Token
 	w.SteamLoginSecure = result.Authenticateuser.TokenSecure
 
-	w.client.Emit(new(WebLoggedOnEvent))
+	w.client.Emit(&WebLoggedOnEvent{})
 
 	return nil
 }
@@ -140,7 +140,7 @@ func (w *Web) handleNewLoginKey(packet *protocol.Packet) {
 	// number -> string -> bytes -> base64
 	w.SessionId = base64.StdEncoding.EncodeToString([]byte(strconv.FormatUint(uint64(msg.GetUniqueId()), 10)))
 
-	w.client.Emit(new(WebSessionIdEvent))
+	w.client.Emit(&WebSessionIdEvent{})
 }
 
 func (w *Web) handleAuthNonceResponse(packet *protocol.Packet) {

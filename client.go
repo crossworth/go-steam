@@ -63,7 +63,7 @@ type PacketHandler interface {
 func NewClient() *Client {
 	client := &Client{
 		events:   make(chan interface{}, 30),
-		writeBuf: new(bytes.Buffer),
+		writeBuf: &bytes.Buffer{},
 	}
 
 	client.Auth = &Auth{client: client}
@@ -313,7 +313,7 @@ func (c *Client) handleChannelEncryptRequest(packet *protocol.Packet) {
 
 	encryptedKey := cryptoutil.RSAEncrypt(GetPublicKey(steamlang.EUniverse_Public), c.tempSessionKey)
 
-	payload := new(bytes.Buffer)
+	payload := &bytes.Buffer{}
 	payload.Write(encryptedKey)
 
 	if err := binary.Write(payload, binary.LittleEndian, crc32.ChecksumIEEE(encryptedKey)); err != nil {

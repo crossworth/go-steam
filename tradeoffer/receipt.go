@@ -23,13 +23,13 @@ func parseTradeReceipt(data []byte) ([]*TradeReceiptItem, error) {
 	itemMatches := receiptItemRE.FindAllSubmatch(data, -1)
 
 	if itemMatches == nil {
-		return nil, errors.New("items not found")
+		return nil, errors.New("no items found")
 	}
 
 	items := make([]*TradeReceiptItem, 0, len(itemMatches))
 
 	for _, m := range itemMatches {
-		item := new(TradeReceiptItem)
+		item := &TradeReceiptItem{}
 		err := json.Unmarshal(m[1], &item)
 
 		if err != nil {
