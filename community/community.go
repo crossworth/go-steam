@@ -8,15 +8,19 @@ import (
 
 const cookiePath = "https://steamcommunity.com/"
 
-func SetCookies(client *http.Client, sessionID, steamLogin, steamLoginSecure string) {
+func SetCookies(client *http.Client, sessionID, steamLogin, steamLoginSecure string) error {
+	var err error
+
 	if client.Jar == nil {
-		client.Jar, _ = cookiejar.New(nil)
+		if client.Jar, err = cookiejar.New(nil); err != nil {
+			return err
+		}
 	}
 
 	base, err := url.Parse(cookiePath)
 
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	client.Jar.SetCookies(base, []*http.Cookie{
@@ -35,4 +39,6 @@ func SetCookies(client *http.Client, sessionID, steamLogin, steamLoginSecure str
 			Value: steamLoginSecure,
 		},
 	})
+
+	return nil
 }

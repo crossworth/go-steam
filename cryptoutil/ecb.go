@@ -21,9 +21,9 @@ func newECB(b cipher.Block) *ecb {
 
 type ecbEncrypter ecb
 
-// NewECBEncrypter returns a BlockMode which encrypts in electronic code book
-// mode, using the given Block.
-func newECBEncrypter(b cipher.Block) cipher.BlockMode {
+// NewECBEncrypter returns a BlockMode which encrypts in electronic code book mode, using the given
+// Block.
+func NewECBEncrypter(b cipher.Block) cipher.BlockMode {
 	return (*ecbEncrypter)(newECB(b))
 }
 
@@ -45,9 +45,9 @@ func (x *ecbEncrypter) CryptBlocks(dst, src []byte) {
 
 type ecbDecrypter ecb
 
-// newECBDecrypter returns a BlockMode which decrypts in electronic code book
-// mode, using the given Block.
-func newECBDecrypter(b cipher.Block) cipher.BlockMode {
+// NewECBDecrypter returns a BlockMode which decrypts in electronic code book mode, using the given
+// Block.
+func NewECBDecrypter(b cipher.Block) cipher.BlockMode {
 	return (*ecbDecrypter)(newECB(b))
 }
 

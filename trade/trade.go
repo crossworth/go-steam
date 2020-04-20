@@ -11,8 +11,7 @@ import (
 const pollTimeout = time.Second
 
 type Trade struct {
-	ThemId steamid.SteamId
-
+	ThemId             steamid.SteamId
 	MeReady, ThemReady bool
 
 	lastPoll     time.Time
@@ -20,14 +19,23 @@ type Trade struct {
 	api          *tradeapi.Trade
 }
 
-func New(sessionID, steamLogin, steamLoginSecure string, other steamid.SteamId) *Trade {
-	return &Trade{
-		other,
-		false, false,
-		time.Unix(0, 0),
-		nil,
-		tradeapi.New(sessionID, steamLogin, steamLoginSecure, other),
+func New(sessionID, steamLogin, steamLoginSecure string, other steamid.SteamId) (*Trade, error) {
+	api, err := tradeapi.New(sessionID, steamLogin, steamLoginSecure, other)
+
+	if err != nil {
+		return nil, err
 	}
+
+	t := &Trade{
+		ThemId:       other,
+		MeReady:      false,
+		ThemReady:    false,
+		lastPoll:     time.Unix(0, 0),
+		queuedEvents: nil,
+		api:          api,
+	}
+
+	return t, nil
 }
 
 func (t *Trade) Version() uint {

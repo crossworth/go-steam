@@ -9,6 +9,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/13k/go-steam"
@@ -36,30 +37,27 @@ func main() {
 		AuthCode: authcode,
 	}
 
-	auth := gsbot.NewAuth(bot, credentials, "sentry.bin")
-	debug, err := gsbot.NewDebug(bot, "debug")
+	gsbot.NewAuth(bot, credentials, "sentry.bin")
+	_, err := gsbot.NewDebug(bot, "debug")
 
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
-	client.RegisterPacketHandler(debug)
 	serverList := gsbot.NewServerList(bot, "serverlist.json")
 
 	if _, err := serverList.Connect(); err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	for event := range client.Events() {
-		auth.HandleEvent(event)
-		debug.HandleEvent(event)
-		serverList.HandleEvent(event)
+		bot.HandleEvent(event)
 
 		switch e := event.(type) {
-		case error:
-			fmt.Printf("Error: %v", e)
 		case *steam.LoggedOnEvent:
 			client.Social.SetPersonaState(steamlang.EPersonaState_Online)
+		case error:
+			log.Printf("Error: %v", e)
 		}
 	}
 }

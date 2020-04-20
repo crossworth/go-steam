@@ -2,6 +2,7 @@ package steam
 
 import (
 	"crypto/sha1"
+	"errors"
 	"sync/atomic"
 	"time"
 
@@ -48,13 +49,13 @@ type LogOnDetails struct {
 //
 // After the event EMsg_ClientNewLoginKey is received you can use the LoginKey
 // to login instead of using the password.
-func (a *Auth) LogOn(details *LogOnDetails) {
+func (a *Auth) LogOn(details *LogOnDetails) error {
 	if details.Username == "" {
-		panic("Username must be set!")
+		return errors.New("steam/auth: username must be set")
 	}
 
 	if details.Password == "" && details.LoginKey == "" {
-		panic("Password or LoginKey must be set!")
+		return errors.New("steam/auth: Password or LoginKey must be set")
 	}
 
 	logon := &pb.CMsgClientLogon{}
@@ -85,6 +86,8 @@ func (a *Auth) LogOn(details *LogOnDetails) {
 	atomic.StoreUint64(&a.client.steamID, id)
 
 	a.client.Write(protocol.NewClientMsgProtobuf(steamlang.EMsg_ClientLogon, logon))
+
+	return nil
 }
 
 func (a *Auth) HandlePacket(packet *protocol.Packet) {
@@ -108,7 +111,7 @@ func (a *Auth) HandlePacket(packet *protocol.Packet) {
 
 func (a *Auth) handleLogOnResponse(packet *protocol.Packet) {
 	if !packet.IsProto {
-		a.client.Fatalf("Got non-proto logon response!")
+		a.client.Fatalf("received non-proto logon response")
 		return
 	}
 
@@ -179,12 +182,14 @@ func (a *Auth) handleLoggedOff(packet *protocol.Packet) {
 
 func (a *Auth) handleUpdateMachineAuth(packet *protocol.Packet) {
 	body := &pb.CMsgClientUpdateMachineAuth{}
+
 	packet.ReadProtoMsg(body)
+
 	hash := sha1.New()
 
 	if _, err := hash.Write(packet.Data); err != nil {
-		// FIXME: don't panic
-		panic(err)
+		a.client.Fatalf("auth: error generating sha1 hash of machine auth: %v", err)
+		return
 	}
 
 	sha := hash.Sum(nil)

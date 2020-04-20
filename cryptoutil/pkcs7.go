@@ -4,8 +4,8 @@ import (
 	"crypto/aes"
 )
 
-// Returns a new byte array padded with PKCS7 and prepended
-// with empty space of the AES block size (16 bytes) for the IV.
+// padPKCS7WithIV returns a new byte array padded with PKCS7 and prepended with empty space of the
+// AES block size (16 bytes) for the IV.
 func padPKCS7WithIV(src []byte) []byte {
 	missing := aes.BlockSize - (len(src) % aes.BlockSize)
 	newSize := len(src) + aes.BlockSize + missing

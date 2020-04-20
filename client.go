@@ -131,44 +131,65 @@ func (c *Client) Connected() bool {
 	return c.conn != nil
 }
 
-// Connects to a random Steam server and returns its address.
+// Connect connects to a random Steam server and returns its address.
+//
 // If this client is already connected, it is disconnected first.
-// This method tries to use an address from the Steam Directory and falls
-// back to the built-in server list if the Steam Directory can't be reached.
+//
+// This method tries to use an address from the Steam Directory and falls back to the built-in
+// server list if the Steam Directory can't be reached.
+//
 // If you want to connect to a specific server, use `ConnectTo`.
-func (c *Client) Connect() *netutil.PortAddr {
-	var server *netutil.PortAddr
+func (c *Client) Connect() (*netutil.PortAddr, error) {
+	var (
+		server *netutil.PortAddr
+		err    error
+	)
+
 	if steamDirectoryCache.IsInitialized() {
-		server = steamDirectoryCache.GetRandomCM()
+		server, err = steamDirectoryCache.GetRandomCM()
 	} else {
-		server = GetRandomCM()
+		server, err = GetRandomCM()
 	}
-	c.ConnectTo(server)
-	return server
+
+	if err != nil {
+		return nil, err
+	}
+
+	if err = c.ConnectTo(server); err != nil {
+		return nil, err
+	}
+
+	return server, nil
 }
 
-// Connects to a specific server.
+// ConnectTo connects to a specific server.
+//
 // You may want to use one of the `GetRandom*CM()` functions in this package.
+//
 // If this client is already connected, it is disconnected first.
-func (c *Client) ConnectTo(addr *netutil.PortAddr) {
-	c.ConnectToBind(addr, nil)
+func (c *Client) ConnectTo(addr *netutil.PortAddr) error {
+	return c.ConnectToBind(addr, nil)
 }
 
-// Connects to a specific server, and binds to a specified local IP
+// ConnectToBind connects to a specific server, and binds to a specified local IP.
+//
 // If this client is already connected, it is disconnected first.
-func (c *Client) ConnectToBind(addr *netutil.PortAddr, local *net.TCPAddr) {
+func (c *Client) ConnectToBind(addr *netutil.PortAddr, local *net.TCPAddr) error {
 	c.Disconnect()
 
 	conn, err := dialTCP(local, addr.ToTCPAddr())
+
 	if err != nil {
-		c.Fatalf("Connect failed: %v", err)
-		return
+		return err
 	}
+
 	c.conn = conn
 	c.writeChan = make(chan protocol.IMsg, 5)
 
 	go c.readLoop()
 	go c.writeLoop()
+
+	return nil
 }
 
 func (c *Client) Disconnect() {
@@ -181,16 +202,19 @@ func (c *Client) Disconnect() {
 
 	c.conn.Close()
 	c.conn = nil
+
 	if c.heartbeat != nil {
 		c.heartbeat.Stop()
 	}
-	close(c.writeChan)
-	c.Emit(&DisconnectedEvent{})
 
+	close(c.writeChan)
+
+	c.Emit(&DisconnectedEvent{})
 }
 
-// Adds a message to the send queue. Modifications to the given message after
-// writing are not allowed (possible race conditions).
+// Write adds a message to the send queue.
+//
+// Modifications to the given message after writing are not allowed (possible race conditions).
 //
 // Writes to this client when not connected are ignored.
 func (c *Client) Write(msg protocol.IMsg) {
@@ -302,22 +326,30 @@ func (c *Client) handleChannelEncryptRequest(packet *protocol.Packet) {
 	packet.ReadMsg(body)
 
 	if body.Universe != steamlang.EUniverse_Public {
-		c.Fatalf("Invalid universe %v!", body.Universe)
+		c.Fatalf("Invalid universe %v", body.Universe)
+		return
 	}
 
 	c.tempSessionKey = make([]byte, 32)
 
 	if _, err := rand.Read(c.tempSessionKey); err != nil {
-		c.Fatalf("handleChannelEncryptRequest: Error while creating session key: %v", err)
+		c.Fatalf("handleChannelEncryptRequest: Error generating session key: %v", err)
+		return
 	}
 
-	encryptedKey := cryptoutil.RSAEncrypt(GetPublicKey(steamlang.EUniverse_Public), c.tempSessionKey)
+	encryptedKey, err := cryptoutil.RSAEncrypt(GetPublicKey(steamlang.EUniverse_Public), c.tempSessionKey)
+
+	if err != nil {
+		c.Fatalf("handleChannelEncryptRequest: Error encrypting session key: %v", err)
+		return
+	}
 
 	payload := &bytes.Buffer{}
 	payload.Write(encryptedKey)
 
 	if err := binary.Write(payload, binary.LittleEndian, crc32.ChecksumIEEE(encryptedKey)); err != nil {
-		c.Fatalf("handleChannelEncryptRequest: Error while creating encrypted response payload: %v", err)
+		c.Fatalf("handleChannelEncryptRequest: Error creating encrypted response payload: %v", err)
+		return
 	}
 
 	payload.WriteByte(0)
@@ -333,11 +365,15 @@ func (c *Client) handleChannelEncryptResult(packet *protocol.Packet) {
 	packet.ReadMsg(body)
 
 	if body.Result != steamlang.EResult_OK {
-		c.Fatalf("Encryption failed: %v", body.Result)
+		c.Fatalf("encryption failed: %v", body.Result)
 		return
 	}
 
-	c.conn.SetEncryptionKey(c.tempSessionKey)
+	if err := c.conn.SetEncryptionKey(c.tempSessionKey); err != nil {
+		c.Fatalf("encryption failed: %v", err)
+		return
+	}
+
 	c.tempSessionKey = nil
 
 	c.Emit(&ConnectedEvent{})
@@ -397,18 +433,19 @@ func (c *Client) handleClientCMList(packet *protocol.Packet) {
 	body := &pb.CMsgClientCMList{}
 	packet.ReadProtoMsg(body)
 
-	l := make([]*netutil.PortAddr, 0)
+	l := make([]*netutil.PortAddr, len(body.GetCmAddresses()))
+
 	for i, ip := range body.GetCmAddresses() {
-		l = append(l, &netutil.PortAddr{
-			IP:   readIp(ip),
+		l[i] = &netutil.PortAddr{
+			IP:   readIPv4(ip),
 			Port: uint16(body.GetCmPorts()[i]),
-		})
+		}
 	}
 
-	c.Emit(&ClientCMListEvent{l})
+	c.Emit(&ClientCMListEvent{Addresses: l})
 }
 
-func readIp(ip uint32) net.IP {
+func readIPv4(ip uint32) net.IP {
 	r := make(net.IP, 4)
 	r[3] = byte(ip)
 	r[2] = byte(ip >> 8)

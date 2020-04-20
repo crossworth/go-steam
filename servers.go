@@ -1,15 +1,23 @@
 package steam
 
 import (
+	"errors"
 	"math/rand"
 	"time"
 
 	"github.com/13k/go-steam/netutil"
 )
 
+type cmRegion int
+
+const (
+	cmRegionNA cmRegion = iota
+	cmRegionEurope
+)
+
 // CMServers contains a list of worlwide servers
 var CMServers = [][]string{
-	{ // North American Servers
+	cmRegionNA: { // North American Servers
 		// Chicago
 		"162.254.193.44:27018",
 		"162.254.193.44:27019",
@@ -47,7 +55,7 @@ var CMServers = [][]string{
 		"208.78.164.14:27018",
 		"208.78.164.14:27019",
 	},
-	{ // Europe Servers
+	cmRegionEurope: { // Europe Servers
 		// Luxembourg
 		"146.66.152.10:27017",
 		"146.66.152.10:27018",
@@ -112,33 +120,41 @@ var CMServers = [][]string{
 	},
 }
 
-// GetRandomCM returns back a random server anywhere
-func GetRandomCM() *netutil.PortAddr {
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	servers := append(CMServers[0], CMServers[1]...)
-	addr := netutil.ParsePortAddr(servers[rng.Int31n(int32(len(servers)))])
-	if addr == nil {
-		panic("invalid address in CMServers slice")
+func getRandomCM(regions ...cmRegion) (*netutil.PortAddr, error) {
+	var servers []string
+
+	if len(regions) == 0 {
+		for _, svlist := range CMServers {
+			servers = append(servers, svlist...)
+		}
+	} else {
+		for _, region := range regions {
+			servers = append(servers, CMServers[region]...)
+		}
 	}
-	return addr
+
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	i := rng.Int31n(int32(len(servers)))
+	addr := netutil.ParsePortAddr(servers[i])
+
+	if addr == nil {
+		return nil, errors.New("invalid address in CMServers slice")
+	}
+
+	return addr, nil
 }
 
-// GetRandomNorthAmericaCM returns back a random server in north america
-func GetRandomNorthAmericaCM() *netutil.PortAddr {
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	addr := netutil.ParsePortAddr(CMServers[0][rng.Int31n(int32(len(CMServers[0])))])
-	if addr == nil {
-		panic("invalid address in CMServers slice")
-	}
-	return addr
+// GetRandomCM returns a random server anywhere
+func GetRandomCM() (*netutil.PortAddr, error) {
+	return getRandomCM()
 }
 
-// GetRandomEuropeCM returns back a random server in europe
-func GetRandomEuropeCM() *netutil.PortAddr {
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	addr := netutil.ParsePortAddr(CMServers[1][rng.Int31n(int32(len(CMServers[1])))])
-	if addr == nil {
-		panic("invalid address in CMServers slice")
-	}
-	return addr
+// GetRandomNorthAmericaCM returns a random server in North America
+func GetRandomNorthAmericaCM() (*netutil.PortAddr, error) {
+	return getRandomCM(cmRegionNA)
+}
+
+// GetRandomEuropeCM returns a random server in Europe
+func GetRandomEuropeCM() (*netutil.PortAddr, error) {
+	return getRandomCM(cmRegionEurope)
 }

@@ -2,6 +2,7 @@ package steam
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/rand"
 	"net/http"
@@ -66,18 +67,18 @@ func (sd *steamDirectory) Initialize() error {
 	return nil
 }
 
-func (sd *steamDirectory) GetRandomCM() *netutil.PortAddr {
+func (sd *steamDirectory) GetRandomCM() (*netutil.PortAddr, error) {
 	sd.RLock()
 	defer sd.RUnlock()
 
 	if !sd.isInitialized {
-		panic("steam directory is not initialized")
+		return nil, errors.New("steam directory is not initialized")
 	}
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	addr := netutil.ParsePortAddr(sd.servers[rng.Int31n(int32(len(sd.servers)))])
 
-	return addr
+	return addr, nil
 }
 
 func (sd *steamDirectory) IsInitialized() bool {

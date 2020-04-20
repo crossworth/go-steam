@@ -4,6 +4,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -17,11 +18,13 @@ type connection interface {
 	Read() (*protocol.Packet, error)
 	Write([]byte) error
 	Close() error
-	SetEncryptionKey([]byte)
+	SetEncryptionKey([]byte) error
 	IsEncrypted() bool
 }
 
 const tcpConnectionMagic uint32 = 0x31305456 // "VT01"
+
+var _ connection = (*tcpConnection)(nil)
 
 type tcpConnection struct {
 	conn        *net.TCPConn
@@ -50,51 +53,57 @@ func (c *tcpConnection) Read() (*protocol.Packet, error) {
 
 	// A magic value follows for validation
 	var packetMagic uint32
-	err = binary.Read(c.conn, binary.LittleEndian, &packetMagic)
-	if err != nil {
+
+	if err = binary.Read(c.conn, binary.LittleEndian, &packetMagic); err != nil {
 		return nil, err
 	}
+
 	if packetMagic != tcpConnectionMagic {
-		return nil, fmt.Errorf("Invalid connection magic! Expected %d, got %d!", tcpConnectionMagic, packetMagic)
+		return nil, fmt.Errorf(
+			"steam/connection: invalid connection magic. expected %d, got %d",
+			tcpConnectionMagic,
+			packetMagic,
+		)
 	}
 
 	buf := make([]byte, packetLen)
-	_, err = io.ReadFull(c.conn, buf)
-	if err == io.ErrUnexpectedEOF {
-		return nil, io.EOF
-	}
-	if err != nil {
+
+	if _, err = io.ReadFull(c.conn, buf); err != nil {
+		if errors.Is(err, io.ErrUnexpectedEOF) {
+			return nil, io.EOF
+		}
+
 		return nil, err
 	}
 
 	// Packets after ChannelEncryptResult are encrypted
-	c.cipherMutex.RLock()
-	if c.ciph != nil {
-		buf = cryptoutil.SymmetricDecrypt(c.ciph, buf)
-	}
-	c.cipherMutex.RUnlock()
+	buf = c.decrypt(buf)
 
 	return protocol.NewPacket(buf)
 }
 
-// Writes a message. This may only be used by one goroutine at a time.
+// Write sends a message.
+//
+// This may only be used by one goroutine at a time.
 func (c *tcpConnection) Write(message []byte) error {
-	c.cipherMutex.RLock()
-	if c.ciph != nil {
-		message = cryptoutil.SymmetricEncrypt(c.ciph, message)
-	}
-	c.cipherMutex.RUnlock()
+	var err error
 
-	err := binary.Write(c.conn, binary.LittleEndian, uint32(len(message)))
+	message, err = c.encrypt(message)
+
 	if err != nil {
 		return err
 	}
-	err = binary.Write(c.conn, binary.LittleEndian, tcpConnectionMagic)
-	if err != nil {
+
+	if err = binary.Write(c.conn, binary.LittleEndian, uint32(len(message))); err != nil {
+		return err
+	}
+
+	if err = binary.Write(c.conn, binary.LittleEndian, tcpConnectionMagic); err != nil {
 		return err
 	}
 
 	_, err = c.conn.Write(message)
+
 	return err
 }
 
@@ -102,26 +111,50 @@ func (c *tcpConnection) Close() error {
 	return c.conn.Close()
 }
 
-func (c *tcpConnection) SetEncryptionKey(key []byte) {
+func (c *tcpConnection) SetEncryptionKey(key []byte) error {
 	c.cipherMutex.Lock()
 	defer c.cipherMutex.Unlock()
+
 	if key == nil {
 		c.ciph = nil
-		return
+		return nil
 	}
+
 	if len(key) != 32 {
-		panic("Connection AES key is not 32 bytes long!")
+		return errors.New("connection AES key is not 32 bytes long")
 	}
 
 	var err error
+
 	c.ciph, err = aes.NewCipher(key)
-	if err != nil {
-		panic(err)
-	}
+
+	return err
 }
 
 func (c *tcpConnection) IsEncrypted() bool {
 	c.cipherMutex.RLock()
 	defer c.cipherMutex.RUnlock()
 	return c.ciph != nil
+}
+
+func (c *tcpConnection) encrypt(message []byte) ([]byte, error) {
+	c.cipherMutex.RLock()
+	defer c.cipherMutex.RUnlock()
+
+	if c.ciph != nil {
+		return cryptoutil.SymmetricEncrypt(c.ciph, message)
+	}
+
+	return message, nil
+}
+
+func (c *tcpConnection) decrypt(message []byte) []byte {
+	c.cipherMutex.RLock()
+	defer c.cipherMutex.RUnlock()
+
+	if c.ciph != nil {
+		return cryptoutil.SymmetricDecrypt(c.ciph, message)
+	}
+
+	return message
 }

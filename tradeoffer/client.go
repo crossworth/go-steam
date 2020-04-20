@@ -129,16 +129,24 @@ func (c *Client) GetOffers(
 	return t.Response, nil
 }
 
-// action() is used by Decline() and Cancel()
-// Steam only return success and error fields for malformed requests,
-// hence client shall use GetOffer() to check action result
-// It is also possible to implement Decline/Cancel using steamcommunity,
-// which have more predictable responses
+// action is used by Decline and Cancel.
+//
+// Steam only returns success and error fields for malformed requests, hence client shall use
+// GetOffer to check action result.
+//
+// It is also possible to implement Decline/Cancel using steamcommunity, which have more predictable
+// responses.
 func (c *Client) action(method string, version uint, offerID uint64) error {
-	req := netutil.NewPostForm(fmt.Sprintf(apiURL, method, version), netutil.ToUrlValues(map[string]string{
+	data := netutil.ToUrlValues(map[string]string{
 		"key":          string(c.key),
 		"tradeofferid": strconv.FormatUint(offerID, 10),
-	}))
+	})
+
+	req, err := netutil.NewPostForm(fmt.Sprintf(apiURL, method, version), data)
+
+	if err != nil {
+		return err
+	}
 
 	resp, err := c.client.Do(req)
 
@@ -163,17 +171,24 @@ func (c *Client) Cancel(offerID uint64) error {
 	return c.action("CancelTradeOffer", 1, offerID)
 }
 
-// Accept received trade offer
-// It is best to confirm that offer was actually accepted
-// by calling GetOffer after Accept and checking offer state
+// Accept accepts received trade offer.
+//
+// It is best to confirm that offer was actually accepted by calling GetOffer after Accept and
+// checking offer state.
 func (c *Client) Accept(offerID uint64) error {
 	baseurl := fmt.Sprintf("https://steamcommunity.com/tradeoffer/%d/", offerID)
 
-	req := netutil.NewPostForm(baseurl+"accept", netutil.ToUrlValues(map[string]string{
+	data := netutil.ToUrlValues(map[string]string{
 		"sessionid":    c.sessionID,
 		"serverid":     "1",
 		"tradeofferid": strconv.FormatUint(offerID, 10),
-	}))
+	})
+
+	req, err := netutil.NewPostForm(baseurl+"accept", data)
+
+	if err != nil {
+		return err
+	}
 
 	req.Header.Add("Referer", baseurl)
 
@@ -286,7 +301,12 @@ func (c *Client) Create(
 	}
 
 	// Create request
-	req := netutil.NewPostForm("https://steamcommunity.com/tradeoffer/new/send", netutil.ToUrlValues(data))
+	req, err := netutil.NewPostForm("https://steamcommunity.com/tradeoffer/new/send", netutil.ToUrlValues(data))
+
+	if err != nil {
+		return 0, err
+	}
+
 	req.Header.Add("Referer", referer)
 
 	// Send request

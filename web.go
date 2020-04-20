@@ -48,27 +48,33 @@ func (w *Web) HandlePacket(packet *protocol.Packet) {
 	}
 }
 
-// Fetches the `steamLogin` cookie. This may only be called after the first
-// WebSessionIdEvent or it will panic.
-func (w *Web) LogOn() {
+// LogOn fetches the `steamLogin` cookie.
+//
+// Returns an error if called before the first WebSessionIdEvent.
+func (w *Web) LogOn() error {
 	if w.webLoginKey == "" {
-		panic("Web: webLoginKey not initialized!")
+		return errors.New("steam/web: session not initialized")
 	}
 
 	go func() {
 		// retry three times. yes, I know about loops.
 		err := w.apiLogOn()
+
 		if err != nil {
 			err = w.apiLogOn()
+
 			if err != nil {
 				err = w.apiLogOn()
 			}
 		}
+
 		if err != nil {
 			w.client.Emit(WebLogOnErrorEvent(err))
 			return
 		}
 	}()
+
+	return nil
 }
 
 func (w *Web) apiLogOn() error {
@@ -78,9 +84,23 @@ func (w *Web) apiLogOn() error {
 		return err
 	}
 
-	cryptedSessionKey := cryptoutil.RSAEncrypt(GetPublicKey(steamlang.EUniverse_Public), sessionKey)
-	ciph, _ := aes.NewCipher(sessionKey)
-	cryptedLoginKey := cryptoutil.SymmetricEncrypt(ciph, []byte(w.webLoginKey))
+	cryptedSessionKey, err := cryptoutil.RSAEncrypt(GetPublicKey(steamlang.EUniverse_Public), sessionKey)
+
+	if err != nil {
+		return err
+	}
+
+	ciph, err := aes.NewCipher(sessionKey)
+
+	if err != nil {
+		return err
+	}
+
+	cryptedLoginKey, err := cryptoutil.SymmetricEncrypt(ciph, []byte(w.webLoginKey))
+
+	if err != nil {
+		return err
+	}
 
 	data := make(url.Values)
 	data.Add("format", "json")
@@ -113,9 +133,7 @@ func (w *Web) apiLogOn() error {
 		}
 	}{}
 
-	err = json.NewDecoder(resp.Body).Decode(result)
-
-	if err != nil {
+	if err = json.NewDecoder(resp.Body).Decode(result); err != nil {
 		return err
 	}
 
