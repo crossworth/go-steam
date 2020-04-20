@@ -5,7 +5,7 @@ import (
 	"github.com/13k/go-steam-resources/steamlang"
 	"github.com/13k/go-steam/protocol"
 	"github.com/13k/go-steam/steamid"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 // Trading provides access to the Steam client's part of Steam Trading, that is bootstrapping the

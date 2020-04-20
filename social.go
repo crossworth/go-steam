@@ -14,7 +14,7 @@ import (
 	"github.com/13k/go-steam/rwu"
 	"github.com/13k/go-steam/socialcache"
 	"github.com/13k/go-steam/steamid"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 // Social provides access to social aspects of Steam.

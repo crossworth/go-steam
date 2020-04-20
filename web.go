@@ -15,7 +15,7 @@ import (
 	"github.com/13k/go-steam-resources/steamlang"
 	"github.com/13k/go-steam/cryptoutil"
 	"github.com/13k/go-steam/protocol"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 type Web struct {

@@ -6,7 +6,7 @@ import (
 	pb "github.com/13k/go-steam-resources/protobuf/steam"
 	"github.com/13k/go-steam-resources/steamlang"
 	"github.com/13k/go-steam/protocol"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 // An incoming, partially unread message from the Game Coordinator.

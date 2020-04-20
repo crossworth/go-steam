@@ -5,7 +5,7 @@ import (
 
 	"github.com/13k/go-steam-resources/steamlang"
 	"github.com/13k/go-steam/steamid"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 // Interface for all messages, typically outgoing. They can also be created by
