@@ -4,4 +4,4 @@ type WebLoggedOnEvent struct{}
 
 type WebLogOnErrorEvent error
 
-type WebSessionIdEvent struct{}
+type WebSessionIDEvent struct{}

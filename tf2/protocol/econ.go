@@ -6,7 +6,8 @@ import (
 )
 
 type MsgGCSetItemPosition struct {
-	AssetId, Position uint64
+	AssetID  uint64
+	Position uint64
 }
 
 func (m *MsgGCSetItemPosition) Serialize(w io.Writer) error {
@@ -25,16 +26,17 @@ func (m *MsgGCCraft) Serialize(w io.Writer) error {
 }
 
 type MsgGCDeleteItem struct {
-	ItemId uint64
+	ItemID uint64
 }
 
 func (m *MsgGCDeleteItem) Serialize(w io.Writer) error {
-	return binary.Write(w, binary.LittleEndian, m.ItemId)
+	return binary.Write(w, binary.LittleEndian, m.ItemID)
 }
 
 type MsgGCNameItem struct {
-	Tool, Target uint64
-	Name         string
+	Tool   uint64
+	Target uint64
+	Name   string
 }
 
 func (m *MsgGCNameItem) Serialize(w io.Writer) error {

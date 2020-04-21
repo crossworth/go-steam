@@ -118,7 +118,7 @@ func (a *Auth) HandleEvent(event interface{}) {
 			a.bot.Log.Fatalf("error writing sentry file: %v", err)
 		}
 	case *steam.LoggedOnEvent:
-		a.bot.Log.Printf("Logged on (%v) with SteamId %v and account flags %v", e.Result, e.ClientSteamId, e.AccountFlags)
+		a.bot.Log.Printf("Logged on (%v) with SteamID %v and account flags %v", e.Result, e.ClientSteamID, e.AccountFlags)
 	case *steam.MachineAuthUpdateEvent:
 		a.machineAuthHash = e.Hash
 

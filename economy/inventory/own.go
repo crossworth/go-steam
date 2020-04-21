@@ -6,7 +6,7 @@ import (
 	"strconv"
 )
 
-func GetPartialOwnInventory(
+func GetOwnPartialInventory(
 	client *http.Client,
 	contextID uint64,
 	appID uint32,
@@ -25,13 +25,13 @@ func GetPartialOwnInventory(
 		return nil, err
 	}
 
-	return DoInventoryRequest(client, req)
+	return PerformRequest(client, req)
 }
 
 func GetOwnInventory(client *http.Client, contextID uint64, appID uint32) (*Inventory, error) {
 	return GetFullInventory(func() (*PartialInventory, error) {
-		return GetPartialOwnInventory(client, contextID, appID, nil)
+		return GetOwnPartialInventory(client, contextID, appID, nil)
 	}, func(start uint) (*PartialInventory, error) {
-		return GetPartialOwnInventory(client, contextID, appID, &start)
+		return GetOwnPartialInventory(client, contextID, appID, &start)
 	})
 }

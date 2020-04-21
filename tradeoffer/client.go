@@ -37,8 +37,8 @@ func NewClient(key APIKey, sessionID, steamLogin, steamLoginSecure string) *Clie
 	return c
 }
 
-func (c *Client) GetOffer(offerID uint64) (*TradeOfferResult, error) {
-	resp, err := c.client.Get(fmt.Sprintf(apiURL, "GetTradeOffer", 1) + "?" + netutil.ToUrlValues(map[string]string{
+func (c *Client) GetOffer(offerID uint64) (*Result, error) {
+	resp, err := c.client.Get(fmt.Sprintf(apiURL, "GetTradeOffer", 1) + "?" + netutil.ToURLValues(map[string]string{
 		"key":          string(c.key),
 		"tradeofferid": strconv.FormatUint(offerID, 10),
 		"language":     "en_us",
@@ -51,7 +51,7 @@ func (c *Client) GetOffer(offerID uint64) (*TradeOfferResult, error) {
 	defer resp.Body.Close()
 
 	t := &struct {
-		Response *TradeOfferResult
+		Response *Result
 	}{}
 
 	if err = json.NewDecoder(resp.Body).Decode(t); err != nil {
@@ -72,7 +72,7 @@ func (c *Client) GetOffers(
 	activeOnly bool,
 	historicalOnly bool,
 	timeHistoricalCutoff *uint32,
-) (*TradeOffersResult, error) {
+) (*MultiResult, error) {
 	if !getSent && !getReceived {
 		return nil, errors.New("getSent and getReceived can't be both false")
 	}
@@ -106,7 +106,7 @@ func (c *Client) GetOffers(
 		params["time_historical_cutoff"] = strconv.FormatUint(uint64(*timeHistoricalCutoff), 10)
 	}
 
-	resp, err := c.client.Get(fmt.Sprintf(apiURL, "GetTradeOffers", 1) + "?" + netutil.ToUrlValues(params).Encode())
+	resp, err := c.client.Get(fmt.Sprintf(apiURL, "GetTradeOffers", 1) + "?" + netutil.ToURLValues(params).Encode())
 
 	if err != nil {
 		return nil, err
@@ -115,7 +115,7 @@ func (c *Client) GetOffers(
 	defer resp.Body.Close()
 
 	t := &struct {
-		Response *TradeOffersResult
+		Response *MultiResult
 	}{}
 
 	if err = json.NewDecoder(resp.Body).Decode(t); err != nil {
@@ -137,7 +137,7 @@ func (c *Client) GetOffers(
 // It is also possible to implement Decline/Cancel using steamcommunity, which have more predictable
 // responses.
 func (c *Client) action(method string, version uint, offerID uint64) error {
-	data := netutil.ToUrlValues(map[string]string{
+	data := netutil.ToURLValues(map[string]string{
 		"key":          string(c.key),
 		"tradeofferid": strconv.FormatUint(offerID, 10),
 	})
@@ -178,7 +178,7 @@ func (c *Client) Cancel(offerID uint64) error {
 func (c *Client) Accept(offerID uint64) error {
 	baseurl := fmt.Sprintf("https://steamcommunity.com/tradeoffer/%d/", offerID)
 
-	data := netutil.ToUrlValues(map[string]string{
+	data := netutil.ToURLValues(map[string]string{
 		"sessionid":    c.sessionID,
 		"serverid":     "1",
 		"tradeofferid": strconv.FormatUint(offerID, 10),
@@ -220,16 +220,19 @@ func (c *Client) Accept(offerID uint64) error {
 }
 
 type TradeItem struct {
-	AppId      uint32 `json:"appid"`
-	ContextId  uint64 `json:"contextid,string"`
+	AppID      uint32 `json:"appid"`
+	ContextID  uint64 `json:"contextid,string"`
 	Amount     uint64 `json:"amount"`
-	AssetId    uint64 `json:"assetid,string,omitempty"`
-	CurrencyId uint64 `json:"currencyid,string,omitempty"`
+	AssetID    uint64 `json:"assetid,string,omitempty"`
+	CurrencyID uint64 `json:"currencyid,string,omitempty"`
 }
 
-// Sends a new trade offer to the given Steam user. You can optionally specify an access token if you've got one.
-// In addition, `counteredOfferId` can be non-nil, indicating the trade offer this is a counter for.
-// On success returns trade offer id
+// Create sends a new trade offer to the given Steam user.
+//
+// You can optionally specify an access token if you've got one. In addition, `counteredOfferID` can
+// be non-nil, indicating the trade offer this is a counter for.
+//
+// On success returns trade offer id.
 func (c *Client) Create(
 	other steamid.SteamID,
 	accessToken *string,
@@ -301,7 +304,7 @@ func (c *Client) Create(
 	}
 
 	// Create request
-	req, err := netutil.NewPostForm("https://steamcommunity.com/tradeoffer/new/send", netutil.ToUrlValues(data))
+	req, err := netutil.NewPostForm("https://steamcommunity.com/tradeoffer/new/send", netutil.ToURLValues(data))
 
 	if err != nil {
 		return 0, err
@@ -391,7 +394,7 @@ func (c *Client) getPartialPartnerInventory(
 		baseURL = fmt.Sprintf(baseURL, "new")
 	}
 
-	req, err := http.NewRequest("GET", baseURL+"partnerinventory/?"+netutil.ToUrlValues(data).Encode(), nil)
+	req, err := http.NewRequest("GET", baseURL+"partnerinventory/?"+netutil.ToURLValues(data).Encode(), nil)
 
 	if err != nil {
 		return nil, err
@@ -399,7 +402,7 @@ func (c *Client) getPartialPartnerInventory(
 
 	req.Header.Add("Referer", baseURL+"?partner="+other.AccountID().FormatString())
 
-	return inventory.DoInventoryRequest(c.client, req)
+	return inventory.PerformRequest(c.client, req)
 }
 
 // Can be used to verify accepted tradeoffer and find out received asset ids
@@ -436,7 +439,7 @@ func (c *Client) GetPartnerEscrowDuration(other steamid.SteamID, accessToken *st
 	if accessToken != nil {
 		data["token"] = *accessToken
 	}
-	return c.getEscrowDuration("https://steamcommunity.com/tradeoffer/new/?" + netutil.ToUrlValues(data).Encode())
+	return c.getEscrowDuration("https://steamcommunity.com/tradeoffer/new/?" + netutil.ToURLValues(data).Encode())
 }
 
 // Get duration of escrow in days. Call this after receiving a trade offer
@@ -471,8 +474,8 @@ func (c *Client) GetOfferWithRetry(
 	offerID uint64,
 	retryCount int,
 	retryDelay time.Duration,
-) (*TradeOfferResult, error) {
-	var res *TradeOfferResult
+) (*Result, error) {
+	var res *Result
 
 	return res, withRetry(
 		func() (err error) {
@@ -490,8 +493,8 @@ func (c *Client) GetOffersWithRetry(
 	timeHistoricalCutoff *uint32,
 	retryCount int,
 	retryDelay time.Duration,
-) (*TradeOffersResult, error) {
-	var res *TradeOffersResult
+) (*MultiResult, error) {
+	var res *MultiResult
 	return res, withRetry(
 		func() (err error) {
 			res, err = c.GetOffers(getSent, getReceived, getDescriptions, activeOnly, historicalOnly, timeHistoricalCutoff)

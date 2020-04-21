@@ -1,6 +1,4 @@
-/*
-Includes inventory types as used in the trade package
-*/
+// Package inventory includes types as used in the trade package.
 package inventory
 
 import (
@@ -19,19 +17,19 @@ func NewGenericInventory() GenericInventory {
 	return GenericInventory(iMap)
 }
 
-// Get inventory for specified AppId and ContextId
+// Get inventory for specified appID and contextID
 func (i *GenericInventory) Get(appID uint32, contextID uint64) (*Inventory, error) {
 	iMap := (map[uint32]map[uint64]*Inventory)(*i)
 	iMap2, ok := iMap[appID]
 
 	if !ok {
-		return nil, fmt.Errorf("inventory for specified appId not found")
+		return nil, fmt.Errorf("inventory for specified appID not found")
 	}
 
 	inv, ok := iMap2[contextID]
 
 	if !ok {
-		return nil, fmt.Errorf("inventory for specified contextId not found")
+		return nil, fmt.Errorf("inventory for specified contextID not found")
 	}
 
 	return inv, nil
@@ -56,7 +54,7 @@ type Inventory struct {
 	AppInfo      *AppInfo     `json:"rgAppInfo"`
 }
 
-// Items key is an AssetId
+// Items key is an AssetID
 type Items map[string]*Item
 
 func (i *Items) ToMap() map[string]*Item {
@@ -95,7 +93,7 @@ func (c *Currencies) UnmarshalJSON(data []byte) error {
 	return json.Unmarshal(data, (*map[string]*Currency)(c))
 }
 
-// Descriptions key format is %d_%d, first %d is ClassId, second is InstanceId
+// Descriptions key format is %d_%d, first %d is ClassID, second is InstanceID
 type Descriptions map[string]*Description
 
 func (d *Descriptions) ToMap() map[string]*Description {
@@ -122,28 +120,28 @@ func (d *Descriptions) UnmarshalJSON(data []byte) error {
 }
 
 type Item struct {
-	Id         uint64 `json:",string"`
-	ClassId    uint64 `json:",string"`
-	InstanceId uint64 `json:",string"`
+	ID         uint64 `json:",string"`
+	ClassID    uint64 `json:",string"`
+	InstanceID uint64 `json:",string"`
 	Amount     uint64 `json:",string"`
 	Pos        uint32
 }
 
 type Currency struct {
-	Id         uint64 `json:",string"`
-	ClassId    uint64 `json:",string"`
+	ID         uint64 `json:",string"`
+	ClassID    uint64 `json:",string"`
 	IsCurrency bool   `json:"is_currency"`
 	Pos        uint32
 }
 
 type Description struct {
-	AppId      uint32 `json:",string"`
-	ClassId    uint64 `json:",string"`
-	InstanceId uint64 `json:",string"`
+	AppID      uint32 `json:",string"`
+	ClassID    uint64 `json:",string"`
+	InstanceID uint64 `json:",string"`
 
-	IconUrl      string `json:"icon_url"`
-	IconUrlLarge string `json:"icon_url_large"`
-	IconDragUrl  string `json:"icon_drag_url"`
+	IconURL      string `json:"icon_url"`
+	IconLargeURL string `json:"icon_url_large"`
+	IconDragURL  string `json:"icon_drag_url"`
 
 	Name           string
 	MarketName     string `json:"market_name"`
@@ -188,7 +186,7 @@ type Action struct {
 }
 
 type AppInfo struct {
-	AppId uint32
+	AppID uint32
 	Name  string
 	Icon  string
 	Link  string

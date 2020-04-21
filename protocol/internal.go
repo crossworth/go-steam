@@ -8,9 +8,9 @@ import (
 	"github.com/13k/go-steam-resources/steamlang"
 )
 
-type JobId uint64
+type JobID uint64
 
-func (j JobId) String() string {
+func (j JobID) String() string {
 	if j == math.MaxUint64 {
 		return "(none)"
 	}

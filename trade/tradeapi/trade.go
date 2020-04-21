@@ -88,9 +88,9 @@ func (t *Trade) GetMain() (*Main, error) {
 }
 
 // Ajax POSTs to an API endpoint that should return a status
-func (t *Trade) postWithStatus(url string, data map[string]string) (*Status, error) {
-	status := &Status{}
-	req, err := netutil.NewPostForm(url, netutil.ToUrlValues(data))
+func (t *Trade) postWithStatus(url string, data map[string]string) (*Result, error) {
+	status := &Result{}
+	req, err := netutil.NewPostForm(url, netutil.ToURLValues(data))
 
 	if err != nil {
 		return nil, err
@@ -115,7 +115,7 @@ func (t *Trade) postWithStatus(url string, data map[string]string) (*Status, err
 	return status, nil
 }
 
-func (t *Trade) GetStatus() (*Status, error) {
+func (t *Trade) GetStatus() (*Result, error) {
 	return t.postWithStatus(t.baseURL+"tradestatus/", map[string]string{
 		"sessionid": t.sessionID,
 		"logpos":    strconv.FormatUint(uint64(t.LogPos), 10),
@@ -136,7 +136,7 @@ func (t *Trade) GetForeignInventory(contextID uint64, appID uint32, start *uint)
 		data["start"] = strconv.FormatUint(uint64(*start), 10)
 	}
 
-	req, err := http.NewRequest("GET", t.baseURL+"foreigninventory?"+netutil.ToUrlValues(data).Encode(), nil)
+	req, err := http.NewRequest("GET", t.baseURL+"foreigninventory?"+netutil.ToURLValues(data).Encode(), nil)
 
 	if err != nil {
 		return nil, err
@@ -144,7 +144,7 @@ func (t *Trade) GetForeignInventory(contextID uint64, appID uint32, start *uint)
 
 	req.Header.Add("Referer", t.baseURL)
 
-	return inventory.DoInventoryRequest(t.client, req)
+	return inventory.PerformRequest(t.client, req)
 }
 
 // Thread-safe.
@@ -152,7 +152,7 @@ func (t *Trade) GetOwnInventory(contextID uint64, appID uint32) (*inventory.Inve
 	return inventory.GetOwnInventory(t.client, contextID, appID)
 }
 
-func (t *Trade) Chat(message string) (*Status, error) {
+func (t *Trade) Chat(message string) (*Result, error) {
 	return t.postWithStatus(t.baseURL+"chat", map[string]string{
 		"sessionid": t.sessionID,
 		"logpos":    strconv.FormatUint(uint64(t.LogPos), 10),
@@ -161,7 +161,7 @@ func (t *Trade) Chat(message string) (*Status, error) {
 	})
 }
 
-func (t *Trade) AddItem(slot uint, itemID, contextID uint64, appID uint32) (*Status, error) {
+func (t *Trade) AddItem(slot uint, itemID, contextID uint64, appID uint32) (*Result, error) {
 	return t.postWithStatus(t.baseURL+"additem", map[string]string{
 		"sessionid": t.sessionID,
 		"slot":      strconv.FormatUint(uint64(slot), 10),
@@ -171,7 +171,7 @@ func (t *Trade) AddItem(slot uint, itemID, contextID uint64, appID uint32) (*Sta
 	})
 }
 
-func (t *Trade) RemoveItem(slot uint, itemID, contextID uint64, appID uint32) (*Status, error) {
+func (t *Trade) RemoveItem(slot uint, itemID, contextID uint64, appID uint32) (*Result, error) {
 	return t.postWithStatus(t.baseURL+"removeitem", map[string]string{
 		"sessionid": t.sessionID,
 		"slot":      strconv.FormatUint(uint64(slot), 10),
@@ -181,7 +181,7 @@ func (t *Trade) RemoveItem(slot uint, itemID, contextID uint64, appID uint32) (*
 	})
 }
 
-func (t *Trade) SetCurrency(amount uint, currencyID, contextID uint64, appID uint32) (*Status, error) {
+func (t *Trade) SetCurrency(amount uint, currencyID, contextID uint64, appID uint32) (*Result, error) {
 	return t.postWithStatus(t.baseURL+"setcurrency", map[string]string{
 		"sessionid":  t.sessionID,
 		"amount":     strconv.FormatUint(uint64(amount), 10),
@@ -191,7 +191,7 @@ func (t *Trade) SetCurrency(amount uint, currencyID, contextID uint64, appID uin
 	})
 }
 
-func (t *Trade) SetReady(ready bool) (*Status, error) {
+func (t *Trade) SetReady(ready bool) (*Result, error) {
 	return t.postWithStatus(t.baseURL+"toggleready", map[string]string{
 		"sessionid": t.sessionID,
 		"version":   strconv.FormatUint(uint64(t.Version), 10),
@@ -199,14 +199,14 @@ func (t *Trade) SetReady(ready bool) (*Status, error) {
 	})
 }
 
-func (t *Trade) Confirm() (*Status, error) {
+func (t *Trade) Confirm() (*Result, error) {
 	return t.postWithStatus(t.baseURL+"confirm", map[string]string{
 		"sessionid": t.sessionID,
 		"version":   strconv.FormatUint(uint64(t.Version), 10),
 	})
 }
 
-func (t *Trade) Cancel() (*Status, error) {
+func (t *Trade) Cancel() (*Result, error) {
 	return t.postWithStatus(t.baseURL+"cancel", map[string]string{
 		"sessionid": t.sessionID,
 	})

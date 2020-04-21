@@ -110,13 +110,13 @@ func (c *Client) RegisterPacketHandler(handler PacketHandler) {
 	c.handlers = append(c.handlers, handler)
 }
 
-// GetNextJobId returns the next job ID to use.
-func (c *Client) GetNextJobId() protocol.JobId {
-	return protocol.JobId(atomic.AddUint64(&c.currentJobID, 1))
+// GetNextJobID returns the next job ID to use.
+func (c *Client) GetNextJobID() protocol.JobID {
+	return protocol.JobID(atomic.AddUint64(&c.currentJobID, 1))
 }
 
-// SteamId returns the client's steam ID.
-func (c *Client) SteamId() steamid.SteamID {
+// SteamID returns the client's steam ID.
+func (c *Client) SteamID() steamid.SteamID {
 	return steamid.SteamID(atomic.LoadUint64(&c.steamID))
 }
 
@@ -124,8 +124,8 @@ func (c *Client) setSteamID(steamID steamid.SteamID) {
 	atomic.StoreUint64(&c.steamID, steamID.Uint64())
 }
 
-// SessionId returns the session id.
-func (c *Client) SessionId() int32 {
+// SessionID returns the session id.
+func (c *Client) SessionID() int32 {
 	return atomic.LoadInt32(&c.sessionID)
 }
 
@@ -227,8 +227,8 @@ func (c *Client) Disconnect() {
 // Writes to this client when not connected are ignored.
 func (c *Client) Write(msg protocol.IMsg) {
 	if cm, ok := msg.(protocol.IClientMsg); ok {
-		cm.SetSessionId(c.SessionId())
-		cm.SetSteamId(c.SteamId())
+		cm.SetSessionID(c.SessionID())
+		cm.SetSteamID(c.SteamID())
 	}
 
 	c.mutex.RLock()

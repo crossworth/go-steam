@@ -9,7 +9,7 @@ import (
 
 type Slot uint
 
-func (t *Trade) action(status *tradeapi.Status, err error) error {
+func (t *Trade) action(status *tradeapi.Result, err error) error {
 	if err != nil {
 		return err
 	}
@@ -56,11 +56,11 @@ func (t *Trade) GetMain() (*tradeapi.Main, error) {
 }
 
 func (t *Trade) AddItem(slot Slot, item *Item) error {
-	return t.action(t.api.AddItem(uint(slot), item.AssetId, item.ContextId, item.AppId))
+	return t.action(t.api.AddItem(uint(slot), item.AssetID, item.ContextID, item.AppID))
 }
 
 func (t *Trade) RemoveItem(slot Slot, item *Item) error {
-	return t.action(t.api.RemoveItem(uint(slot), item.AssetId, item.ContextId, item.AppId))
+	return t.action(t.api.RemoveItem(uint(slot), item.AssetID, item.ContextID, item.AppID))
 }
 
 func (t *Trade) Chat(message string) error {
@@ -68,7 +68,7 @@ func (t *Trade) Chat(message string) error {
 }
 
 func (t *Trade) SetCurrency(amount uint, currency *Currency) error {
-	return t.action(t.api.SetCurrency(amount, currency.CurrencyId, currency.ContextId, currency.AppId))
+	return t.action(t.api.SetCurrency(amount, currency.CurrencyID, currency.ContextID, currency.AppID))
 }
 
 func (t *Trade) SetReady(ready bool) error {

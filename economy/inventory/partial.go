@@ -7,11 +7,12 @@ import (
 	"net/http"
 )
 
-// A partial inventory as sent by the Steam API.
+// PartialInventory is a partial inventory as sent by the Steam API.
 type PartialInventory struct {
-	Success bool
-	Error   string
 	Inventory
+
+	Success   bool
+	Error     string
 	More      bool
 	MoreStart MoreStart `json:"more_start"`
 }
@@ -25,7 +26,7 @@ func (m *MoreStart) UnmarshalJSON(data []byte) error {
 	return json.Unmarshal(data, (*uint)(m))
 }
 
-func DoInventoryRequest(client *http.Client, req *http.Request) (*PartialInventory, error) {
+func PerformRequest(client *http.Client, req *http.Request) (*PartialInventory, error) {
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err

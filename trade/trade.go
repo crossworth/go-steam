@@ -11,8 +11,9 @@ import (
 const pollTimeout = time.Second
 
 type Trade struct {
-	ThemId             steamid.SteamID
-	MeReady, ThemReady bool
+	ThemID    steamid.SteamID
+	MeReady   bool
+	ThemReady bool
 
 	lastPoll     time.Time
 	queuedEvents []interface{}
@@ -27,7 +28,7 @@ func New(sessionID, steamLogin, steamLoginSecure string, other steamid.SteamID) 
 	}
 
 	t := &Trade{
-		ThemId:       other,
+		ThemID:       other,
 		MeReady:      false,
 		ThemReady:    false,
 		lastPoll:     time.Unix(0, 0),
@@ -49,7 +50,7 @@ func (t *Trade) Events() []interface{} {
 	return qe
 }
 
-func (t *Trade) onStatus(status *tradeapi.Status) error {
+func (t *Trade) onStatus(status *tradeapi.Result) error {
 	if !status.Success {
 		return errors.New("trade: returned status not successful! error message: " + status.Error)
 	}
@@ -61,15 +62,15 @@ func (t *Trade) onStatus(status *tradeapi.Status) error {
 	}
 
 	switch status.TradeStatus {
-	case tradeapi.TradeStatus_Complete:
-		t.addEvent(&TradeEndedEvent{TradeEndReason_Complete})
-	case tradeapi.TradeStatus_Cancelled:
-		t.addEvent(&TradeEndedEvent{TradeEndReason_Cancelled})
-	case tradeapi.TradeStatus_Timeout:
-		t.addEvent(&TradeEndedEvent{TradeEndReason_Timeout})
-	case tradeapi.TradeStatus_Failed:
-		t.addEvent(&TradeEndedEvent{TradeEndReason_Failed})
-	case tradeapi.TradeStatus_Open:
+	case tradeapi.StatusComplete:
+		t.addEvent(&EndEvent{EndReasonComplete})
+	case tradeapi.StatusCanceled:
+		t.addEvent(&EndEvent{EndReasonCanceled})
+	case tradeapi.StatusTimeout:
+		t.addEvent(&EndEvent{EndReasonTimeout})
+	case tradeapi.StatusFailed:
+		t.addEvent(&EndEvent{EndReasonFailed})
+	case tradeapi.StatusOpen:
 		// nothing
 	default:
 		// ignore too
@@ -91,7 +92,7 @@ func (t *Trade) updateEvents(events tradeapi.EventList) {
 			continue
 		}
 
-		if event.SteamId != t.ThemId {
+		if event.SteamID != t.ThemID {
 			continue
 		}
 
@@ -100,23 +101,23 @@ func (t *Trade) updateEvents(events tradeapi.EventList) {
 		}
 
 		switch event.Action {
-		case tradeapi.Action_AddItem:
+		case tradeapi.ActionAddItem:
 			t.addEvent(&ItemAddedEvent{newItem(event)})
-		case tradeapi.Action_RemoveItem:
+		case tradeapi.ActionRemoveItem:
 			t.addEvent(&ItemRemovedEvent{newItem(event)})
-		case tradeapi.Action_Ready:
+		case tradeapi.ActionReady:
 			t.ThemReady = true
 			t.addEvent(&ReadyEvent{})
-		case tradeapi.Action_Unready:
+		case tradeapi.ActionUnready:
 			t.ThemReady = false
 			t.addEvent(&UnreadyEvent{})
-		case tradeapi.Action_SetCurrency:
+		case tradeapi.ActionSetCurrency:
 			t.addEvent(&SetCurrencyEvent{
 				newCurrency(event),
 				event.OldAmount,
 				event.NewAmount,
 			})
-		case tradeapi.Action_ChatMessage:
+		case tradeapi.ActionChatMessage:
 			t.addEvent(&ChatEvent{
 				event.Text,
 			})

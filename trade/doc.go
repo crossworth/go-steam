@@ -26,9 +26,9 @@ TradeEndedEvent is emitted.
 		}
 	}
 
-You can either log into steamcommunity.com and use the values of the `sessionId` and `steamLogin`
+You can either log into steamcommunity.com and use the values of the `sessionID` and `steamLogin`
 cookies, or use go-steam and after logging in with client.Web.LogOn() and receiving the
-WebLoggedOnEvent use the `SessionId` and `SteamLogin` fields of steam.Web for the respective
+WebLoggedOnEvent use the `SessionID` and `SteamLogin` fields of steam.Web for the respective
 cookies.
 
 It is important that there is no delay between the Poll() calls greater than the timeout of the

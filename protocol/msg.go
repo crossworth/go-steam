@@ -14,20 +14,20 @@ type IMsg interface {
 	Serializer
 	IsProto() bool
 	GetMsgType() steamlang.EMsg
-	GetTargetJobId() JobId
-	SetTargetJobId(JobId)
-	GetSourceJobId() JobId
-	SetSourceJobId(JobId)
+	GetTargetJobID() JobID
+	SetTargetJobID(JobID)
+	GetSourceJobID() JobID
+	SetSourceJobID(JobID)
 }
 
 // Interface for client messages, i.e. messages that are sent after logging in.
 // ClientMsgProtobuf and ClientMsg implement this.
 type IClientMsg interface {
 	IMsg
-	GetSessionId() int32
-	SetSessionId(int32)
-	GetSteamId() steamid.SteamID
-	SetSteamId(steamid.SteamID)
+	GetSessionID() int32
+	SetSessionID(int32)
+	GetSteamID() steamid.SteamID
+	SetSteamID(steamid.SteamID)
 }
 
 // Represents a protobuf backed client message with session data.
@@ -53,35 +53,35 @@ func (c *ClientMsgProtobuf) GetMsgType() steamlang.EMsg {
 	return steamlang.MakeEMsg(uint32(c.Header.Msg))
 }
 
-func (c *ClientMsgProtobuf) GetSessionId() int32 {
+func (c *ClientMsgProtobuf) GetSessionID() int32 {
 	return c.Header.Proto.GetClientSessionid()
 }
 
-func (c *ClientMsgProtobuf) SetSessionId(session int32) {
+func (c *ClientMsgProtobuf) SetSessionID(session int32) {
 	c.Header.Proto.ClientSessionid = &session
 }
 
-func (c *ClientMsgProtobuf) GetSteamId() steamid.SteamID {
+func (c *ClientMsgProtobuf) GetSteamID() steamid.SteamID {
 	return steamid.SteamID(c.Header.Proto.GetSteamid())
 }
 
-func (c *ClientMsgProtobuf) SetSteamId(s steamid.SteamID) {
+func (c *ClientMsgProtobuf) SetSteamID(s steamid.SteamID) {
 	c.Header.Proto.Steamid = proto.Uint64(uint64(s))
 }
 
-func (c *ClientMsgProtobuf) GetTargetJobId() JobId {
-	return JobId(c.Header.Proto.GetJobidTarget())
+func (c *ClientMsgProtobuf) GetTargetJobID() JobID {
+	return JobID(c.Header.Proto.GetJobidTarget())
 }
 
-func (c *ClientMsgProtobuf) SetTargetJobId(job JobId) {
+func (c *ClientMsgProtobuf) SetTargetJobID(job JobID) {
 	c.Header.Proto.JobidTarget = proto.Uint64(uint64(job))
 }
 
-func (c *ClientMsgProtobuf) GetSourceJobId() JobId {
-	return JobId(c.Header.Proto.GetJobidSource())
+func (c *ClientMsgProtobuf) GetSourceJobID() JobID {
+	return JobID(c.Header.Proto.GetJobidSource())
 }
 
-func (c *ClientMsgProtobuf) SetSourceJobId(job JobId) {
+func (c *ClientMsgProtobuf) SetSourceJobID(job JobID) {
 	c.Header.Proto.JobidSource = proto.Uint64(uint64(job))
 }
 
@@ -123,35 +123,35 @@ func (c *ClientMsg) GetMsgType() steamlang.EMsg {
 	return c.Header.Msg
 }
 
-func (c *ClientMsg) GetSessionId() int32 {
+func (c *ClientMsg) GetSessionID() int32 {
 	return c.Header.SessionID
 }
 
-func (c *ClientMsg) SetSessionId(session int32) {
+func (c *ClientMsg) SetSessionID(session int32) {
 	c.Header.SessionID = session
 }
 
-func (c *ClientMsg) GetSteamId() steamid.SteamID {
+func (c *ClientMsg) GetSteamID() steamid.SteamID {
 	return steamid.SteamID(c.Header.SteamID)
 }
 
-func (c *ClientMsg) SetSteamId(s steamid.SteamID) {
+func (c *ClientMsg) SetSteamID(s steamid.SteamID) {
 	c.Header.SteamID = s.Uint64()
 }
 
-func (c *ClientMsg) GetTargetJobId() JobId {
-	return JobId(c.Header.TargetJobID)
+func (c *ClientMsg) GetTargetJobID() JobID {
+	return JobID(c.Header.TargetJobID)
 }
 
-func (c *ClientMsg) SetTargetJobId(job JobId) {
+func (c *ClientMsg) SetTargetJobID(job JobID) {
 	c.Header.TargetJobID = uint64(job)
 }
 
-func (c *ClientMsg) GetSourceJobId() JobId {
-	return JobId(c.Header.SourceJobID)
+func (c *ClientMsg) GetSourceJobID() JobID {
+	return JobID(c.Header.SourceJobID)
 }
 
-func (c *ClientMsg) SetSourceJobId(job JobId) {
+func (c *ClientMsg) SetSourceJobID(job JobID) {
 	c.Header.SourceJobID = uint64(job)
 }
 
@@ -177,6 +177,7 @@ type Msg struct {
 func NewMsg(body MessageBody, payload []byte) *Msg {
 	hdr := steamlang.NewMsgHdr()
 	hdr.Msg = body.GetEMsg()
+
 	return &Msg{
 		Header:  hdr,
 		Body:    body,
@@ -192,19 +193,19 @@ func (m *Msg) IsProto() bool {
 	return false
 }
 
-func (m *Msg) GetTargetJobId() JobId {
-	return JobId(m.Header.TargetJobID)
+func (m *Msg) GetTargetJobID() JobID {
+	return JobID(m.Header.TargetJobID)
 }
 
-func (m *Msg) SetTargetJobId(job JobId) {
+func (m *Msg) SetTargetJobID(job JobID) {
 	m.Header.TargetJobID = uint64(job)
 }
 
-func (m *Msg) GetSourceJobId() JobId {
-	return JobId(m.Header.SourceJobID)
+func (m *Msg) GetSourceJobID() JobID {
+	return JobID(m.Header.SourceJobID)
 }
 
-func (m *Msg) SetSourceJobId(job JobId) {
+func (m *Msg) SetSourceJobID(job JobID) {
 	m.Header.SourceJobID = uint64(job)
 }
 

@@ -33,7 +33,7 @@ func (sd *steamDirectory) Initialize() error {
 	defer sd.Unlock()
 
 	client := &http.Client{}
-	resp, err := client.Get("https://api.steampowered.com/ISteamDirectory/GetCMList/v1/?cellId=0")
+	resp, err := client.Get("https://api.steampowered.com/ISteamDirectory/GetCMList/v1/?cellid=0")
 
 	if err != nil {
 		return err

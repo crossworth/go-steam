@@ -8,11 +8,11 @@ import (
 	"github.com/13k/go-steam/steamid"
 )
 
-type Status struct {
+type Result struct {
 	Success     bool
 	Error       string
-	NewVersion  bool        `json:"newversion"`
-	TradeStatus TradeStatus `json:"trade_status"`
+	NewVersion  bool   `json:"newversion"`
+	TradeStatus Status `json:"trade_status"`
 	Version     uint
 	LogPos      int
 	Me          User
@@ -20,15 +20,15 @@ type Status struct {
 	Events      EventList
 }
 
-type TradeStatus uint
+type Status uint
 
 const (
-	TradeStatus_Open      TradeStatus = 0
-	TradeStatus_Complete              = 1
-	TradeStatus_Empty                 = 2 // when both parties trade no items
-	TradeStatus_Cancelled             = 3
-	TradeStatus_Timeout               = 4 // the partner timed out
-	TradeStatus_Failed                = 5
+	StatusOpen Status = iota
+	StatusComplete
+	StatusEmpty // when both parties trade no items
+	StatusCanceled
+	StatusTimeout // the partner timed out
+	StatusFailed
 )
 
 type EventList map[uint]*Event
@@ -74,18 +74,18 @@ func (e *EventList) UnmarshalJSON(data []byte) error {
 }
 
 type Event struct {
-	SteamId   steamid.SteamID `json:",string"`
+	SteamID   steamid.SteamID `json:",string"`
 	Action    Action          `json:",string"`
 	Timestamp uint64
 
-	AppId     uint32
-	ContextId uint64 `json:",string"`
-	AssetId   uint64 `json:",string"`
+	AppID     uint32
+	ContextID uint64 `json:",string"`
+	AssetID   uint64 `json:",string"`
 
 	Text string // only used for chat messages
 
 	// The following is used for SetCurrency
-	CurrencyId uint64 `json:",string"`
+	CurrencyID uint64 `json:",string"`
 	OldAmount  uint64 `json:"old_amount,string"`
 	NewAmount  uint64 `json:"amount,string"`
 }
@@ -93,13 +93,14 @@ type Event struct {
 type Action uint
 
 const (
-	Action_AddItem     Action = 0
-	Action_RemoveItem         = 1
-	Action_Ready              = 2
-	Action_Unready            = 3
-	Action_Accept             = 4
-	Action_SetCurrency        = 6
-	Action_ChatMessage        = 7
+	ActionAddItem Action = iota
+	ActionRemoveItem
+	ActionReady
+	ActionUnready
+	ActionAccept
+	_ // skip
+	ActionSetCurrency
+	ActionChatMessage
 )
 
 type User struct {
@@ -112,8 +113,8 @@ type User struct {
 }
 
 type Currency struct {
-	AppId      uint64 `json:",string"`
-	ContextId  uint64 `json:",string"`
-	CurrencyId uint64 `json:",string"`
+	AppID      uint64 `json:",string"`
+	ContextID  uint64 `json:",string"`
+	CurrencyID uint64 `json:",string"`
 	Amount     uint64 `json:",string"`
 }

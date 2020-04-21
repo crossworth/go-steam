@@ -129,12 +129,12 @@ func (a *Auth) handleLogOnResponse(packet *protocol.Packet) {
 			Result:         result,
 			ExtendedResult: steamlang.EResult(body.GetEresultExtended()),
 			AccountFlags:   steamlang.EAccountFlags(body.GetAccountFlags()),
-			ClientSteamId:  steamid.SteamID(body.GetClientSuppliedSteamid()),
+			ClientSteamID:  steamid.SteamID(body.GetClientSuppliedSteamid()),
 			Body:           body,
 		})
 	case steamlang.EResult_Fail, steamlang.EResult_ServiceUnavailable, steamlang.EResult_TryAnotherCM:
 		// some error on Steam's side, we'll get an EOF later
-		a.client.Emit(&SteamFailureEvent{Result: result})
+		a.client.Emit(&FailureEvent{Result: result})
 	default:
 		a.client.Emit(&LogOnFailedEvent{Result: result})
 		a.client.Disconnect()
@@ -152,7 +152,7 @@ func (a *Auth) handleLoginKey(packet *protocol.Packet) {
 	a.client.Write(protocol.NewClientMsgProtobuf(steamlang.EMsg_ClientNewLoginKeyAccepted, pbAccepted))
 
 	a.client.Emit(&LoginKeyEvent{
-		UniqueId: body.GetUniqueId(),
+		UniqueID: body.GetUniqueId(),
 		LoginKey: body.GetLoginKey(),
 	})
 }
@@ -193,7 +193,7 @@ func (a *Auth) handleUpdateMachineAuth(packet *protocol.Packet) {
 
 	msg := protocol.NewClientMsgProtobuf(steamlang.EMsg_ClientUpdateMachineAuthResponse, pbAuthRes)
 
-	msg.SetTargetJobId(packet.SourceJobId)
+	msg.SetTargetJobID(packet.SourceJobID)
 
 	a.client.Write(msg)
 	a.client.Emit(&MachineAuthUpdateEvent{sha})
@@ -207,7 +207,7 @@ func (a *Auth) handleAccountInfo(packet *protocol.Packet) {
 		Country:              body.GetIpCountry(),
 		CountAuthedComputers: body.GetCountAuthedComputers(),
 		AccountFlags:         steamlang.EAccountFlags(body.GetAccountFlags()),
-		FacebookId:           body.GetFacebookId(),
+		FacebookID:           body.GetFacebookId(),
 		FacebookName:         body.GetFacebookName(),
 	})
 }

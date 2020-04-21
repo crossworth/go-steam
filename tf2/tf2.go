@@ -10,7 +10,7 @@ import (
 	"github.com/13k/go-steam/tf2/protocol"
 )
 
-const AppId = 440
+const AppID = 440
 
 // To use any methods of this, you'll need to SetPlaying(true) and wait for
 // the GCReadyEvent.
@@ -27,15 +27,15 @@ func New(client *steam.Client) *TF2 {
 
 func (t *TF2) SetPlaying(playing bool) {
 	if playing {
-		t.client.GC.SetGamesPlayed(AppId)
+		t.client.GC.SetGamesPlayed(AppID)
 	} else {
 		t.client.GC.SetGamesPlayed()
 	}
 }
 
 func (t *TF2) SetItemPosition(itemID, position uint64) {
-	gcMsg := gc.NewGCMsg(AppId, uint32(pbtf2.EGCItemMsg_k_EMsgGCSetSingleItemPosition), &protocol.MsgGCSetItemPosition{
-		AssetId:  itemID,
+	gcMsg := gc.NewGCMsg(AppID, uint32(pbtf2.EGCItemMsg_k_EMsgGCSetSingleItemPosition), &protocol.MsgGCSetItemPosition{
+		AssetID:  itemID,
 		Position: position,
 	})
 
@@ -44,22 +44,22 @@ func (t *TF2) SetItemPosition(itemID, position uint64) {
 
 // recipe -2 = wildcard
 func (t *TF2) CraftItems(items []uint64, recipe int16) {
-	t.client.GC.Write(gc.NewGCMsg(AppId, uint32(pbtf2.EGCItemMsg_k_EMsgGCCraft), &protocol.MsgGCCraft{
+	t.client.GC.Write(gc.NewGCMsg(AppID, uint32(pbtf2.EGCItemMsg_k_EMsgGCCraft), &protocol.MsgGCCraft{
 		Recipe: recipe,
 		Items:  items,
 	}))
 }
 
 func (t *TF2) DeleteItem(itemID uint64) {
-	gcMsg := gc.NewGCMsg(AppId, uint32(pbtf2.EGCItemMsg_k_EMsgGCDelete), &protocol.MsgGCDeleteItem{
-		ItemId: itemID,
+	gcMsg := gc.NewGCMsg(AppID, uint32(pbtf2.EGCItemMsg_k_EMsgGCDelete), &protocol.MsgGCDeleteItem{
+		ItemID: itemID,
 	})
 
 	t.client.GC.Write(gcMsg)
 }
 
 func (t *TF2) NameItem(toolID, target uint64, name string) {
-	t.client.GC.Write(gc.NewGCMsg(AppId, uint32(pbtf2.EGCItemMsg_k_EMsgGCNameItem), &protocol.MsgGCNameItem{
+	t.client.GC.Write(gc.NewGCMsg(AppID, uint32(pbtf2.EGCItemMsg_k_EMsgGCNameItem), &protocol.MsgGCNameItem{
 		Tool:   toolID,
 		Target: target,
 		Name:   name,
@@ -69,7 +69,7 @@ func (t *TF2) NameItem(toolID, target uint64, name string) {
 type GCReadyEvent struct{}
 
 func (t *TF2) HandleGCPacket(packet *gc.GCPacket) {
-	if packet.AppId != AppId {
+	if packet.AppID != AppID {
 		return
 	}
 	switch pbtf2.EGCBaseClientMsg(packet.MsgType) {

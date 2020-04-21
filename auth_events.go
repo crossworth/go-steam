@@ -10,7 +10,7 @@ type LoggedOnEvent struct {
 	Result         steamlang.EResult
 	ExtendedResult steamlang.EResult
 	AccountFlags   steamlang.EAccountFlags
-	ClientSteamId  steamid.SteamID `json:",string"`
+	ClientSteamID  steamid.SteamID `json:",string"`
 	Body           *pb.CMsgClientLogonResponse
 }
 
@@ -19,7 +19,7 @@ type LogOnFailedEvent struct {
 }
 
 type LoginKeyEvent struct {
-	UniqueId uint32
+	UniqueID uint32
 	LoginKey string
 }
 
@@ -36,11 +36,11 @@ type AccountInfoEvent struct {
 	Country              string
 	CountAuthedComputers int32
 	AccountFlags         steamlang.EAccountFlags
-	FacebookId           uint64 `json:",string"`
+	FacebookID           uint64 `json:",string"`
 	FacebookName         string
 }
 
-// SteamFailureEvent is emitted when Steam is down for some reason.
-type SteamFailureEvent struct {
+// FailureEvent is emitted when Steam is down for some reason.
+type FailureEvent struct {
 	Result steamlang.EResult
 }

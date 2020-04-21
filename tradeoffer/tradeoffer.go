@@ -12,75 +12,75 @@ import (
 	"github.com/13k/go-steam/steamid"
 )
 
-type TradeOfferState uint
+type State uint
 
 const (
 	// Invalid
-	TradeOfferState_Invalid TradeOfferState = 1
+	StateInvalid State = iota + 1
 	// This trade offer has been sent, neither party has acted on it yet.
-	TradeOfferState_Active TradeOfferState = 2
+	StateActive
 	// The trade offer was accepted by the recipient and items were exchanged.
-	TradeOfferState_Accepted TradeOfferState = 3
+	StateAccepted
 	// The recipient made a counter offer
-	TradeOfferState_Countered TradeOfferState = 4
+	StateCountered
 	// The trade offer was not accepted before the expiration date
-	TradeOfferState_Expired TradeOfferState = 5
+	StateExpired
 	// The sender canceled the offer
-	TradeOfferState_Canceled TradeOfferState = 6
+	StateCanceled
 	// The recipient declined the offer
-	TradeOfferState_Declined TradeOfferState = 7
+	StateDeclined
 	// Some of the items in the offer are no longer available (indicated by the missing flag in the
 	// output)
-	TradeOfferState_InvalidItems TradeOfferState = 8
+	StateInvalidItems
 	// The offer hasn't been sent yet and is awaiting email/mobile confirmation. The offer is only
 	// visible to the sender.
-	TradeOfferState_CreatedNeedsConfirmation TradeOfferState = 9
+	StateCreatedNeedsConfirmation
 	// Either party canceled the offer via email/mobile. The offer is visible to both parties, even if
 	// the sender canceled it before it was sent.
-	TradeOfferState_CanceledBySecondFactor TradeOfferState = 10
+	StateCanceledBySecondFactor
 	// The trade has been placed on hold. The items involved in the trade have all been removed from
 	// both parties' inventories and will be automatically delivered in the future.
-	TradeOfferState_InEscrow TradeOfferState = 11
+	StateInEscrow
 )
 
-type TradeOfferConfirmationMethod uint
+type ConfirmationMethod uint
 
 const (
-	TradeOfferConfirmationMethod_Invalid   TradeOfferConfirmationMethod = 0
-	TradeOfferConfirmationMethod_Email                                  = 1
-	TradeOfferConfirmationMethod_MobileApp                              = 2
+	ConfirmationMethodInvalid ConfirmationMethod = iota
+	ConfirmationMethodEmail
+	ConfirmationMethodMobileApp
 )
 
 type Asset struct {
-	AppId      uint32 `json:"-"`
-	ContextId  uint64 `json:",string"`
-	AssetId    uint64 `json:",string"`
-	CurrencyId uint64 `json:",string"`
-	ClassId    uint64 `json:",string"`
-	InstanceId uint64 `json:",string"`
+	AppID      uint32 `json:"-"`
+	ContextID  uint64 `json:",string"`
+	AssetID    uint64 `json:",string"`
+	CurrencyID uint64 `json:",string"`
+	ClassID    uint64 `json:",string"`
+	InstanceID uint64 `json:",string"`
 	Amount     uint64 `json:",string"`
 	Missing    bool
 }
 
-type TradeOffer struct {
-	TradeOfferId       uint64                       `json:",string"`
-	TradeId            uint64                       `json:",string"`
-	OtherAccountId     uint32                       `json:"accountid_other"`
-	OtherSteamId       steamid.SteamID              `json:"-"`
-	Message            string                       `json:"message"`
-	ExpirationTime     uint32                       `json:"expiraton_time"`
-	State              TradeOfferState              `json:"trade_offer_state"`
-	ToGive             []*Asset                     `json:"items_to_give"`
-	ToReceive          []*Asset                     `json:"items_to_receive"`
-	IsOurOffer         bool                         `json:"is_our_offer"`
-	TimeCreated        uint32                       `json:"time_created"`
-	TimeUpdated        uint32                       `json:"time_updated"`
-	EscrowEndDate      uint32                       `json:"escrow_end_date"`
-	ConfirmationMethod TradeOfferConfirmationMethod `json:"confirmation_method"`
+type Offer struct {
+	TradeOfferID       uint64             `json:",string"`
+	TradeID            uint64             `json:",string"`
+	OtherAccountID     uint32             `json:"accountid_other"`
+	OtherSteamID       steamid.SteamID    `json:"-"`
+	Message            string             `json:"message"`
+	ExpirationTime     uint32             `json:"expiraton_time"`
+	State              State              `json:"trade_offer_state"`
+	ToGive             []*Asset           `json:"items_to_give"`
+	ToReceive          []*Asset           `json:"items_to_receive"`
+	IsOurOffer         bool               `json:"is_our_offer"`
+	TimeCreated        uint32             `json:"time_created"`
+	TimeUpdated        uint32             `json:"time_updated"`
+	EscrowEndDate      uint32             `json:"escrow_end_date"`
+	ConfirmationMethod ConfirmationMethod `json:"confirmation_method"`
 }
 
-func (t *TradeOffer) UnmarshalJSON(data []byte) error {
-	type Alias TradeOffer
+func (t *Offer) UnmarshalJSON(data []byte) error {
+	type Alias Offer
 	aux := struct {
 		*Alias
 	}{
@@ -89,31 +89,32 @@ func (t *TradeOffer) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &aux); err != nil {
 		return err
 	}
-	if t.OtherAccountId == 0 {
-		t.OtherSteamId = steamid.SteamID(0)
+	if t.OtherAccountID == 0 {
+		t.OtherSteamID = steamid.SteamID(0)
 		return nil
 	}
-	t.OtherSteamId = steamid.SteamID(uint64(t.OtherAccountId) + 76561197960265728)
+	t.OtherSteamID = steamid.SteamID(uint64(t.OtherAccountID) + 76561197960265728)
 	return nil
 }
 
-type TradeOffersResult struct {
-	Sent         []*TradeOffer `json:"trade_offers_sent"`
-	Received     []*TradeOffer `json:"trade_offers_received"`
+type MultiResult struct {
+	Sent         []*Offer `json:"trade_offers_sent"`
+	Received     []*Offer `json:"trade_offers_received"`
 	Descriptions []*Description
 }
 
-type TradeOfferResult struct {
-	Offer        *TradeOffer
+type Result struct {
+	Offer        *Offer
 	Descriptions []*Description
 }
+
 type Description struct {
-	AppId      uint32 `json:"appid"`
-	ClassId    uint64 `json:"classid,string"`
-	InstanceId uint64 `json:"instanceid,string"`
+	AppID      uint32 `json:"appid"`
+	ClassID    uint64 `json:"classid,string"`
+	InstanceID uint64 `json:"instanceid,string"`
 
-	IconUrl      string `json:"icon_url"`
-	IconUrlLarge string `json:"icon_url_large"`
+	IconURL      string `json:"icon_url"`
+	IconLargeURL string `json:"icon_url_large"`
 
 	Name           string
 	MarketName     string `json:"market_name"`

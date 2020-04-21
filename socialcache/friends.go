@@ -27,9 +27,9 @@ func NewFriendsList() *FriendsList {
 func (list *FriendsList) Add(friend Friend) {
 	list.mutex.Lock()
 	defer list.mutex.Unlock()
-	_, exists := list.byID[friend.SteamId]
+	_, exists := list.byID[friend.SteamID]
 	if !exists { //make sure this doesnt already exist
-		list.byID[friend.SteamId] = &friend
+		list.byID[friend.SteamID] = &friend
 	}
 }
 
@@ -51,8 +51,8 @@ func (list *FriendsList) GetCopy() map[steamid.SteamID]Friend {
 	return flist
 }
 
-// Returns a copy of the friend of a given SteamId
-func (list *FriendsList) ById(id steamid.SteamID) (Friend, error) {
+// Returns a copy of the friend of a given SteamID
+func (list *FriendsList) ByID(id steamid.SteamID) (Friend, error) {
 	list.mutex.RLock()
 	defer list.mutex.RUnlock()
 	if val, ok := list.byID[id]; ok {
@@ -109,19 +109,19 @@ func (list *FriendsList) SetPersonaStateFlags(id steamid.SteamID, flags steamlan
 	}
 }
 
-func (list *FriendsList) SetGameAppId(id steamid.SteamID, gameAppID uint32) {
+func (list *FriendsList) SetGameAppID(id steamid.SteamID, gameAppID uint32) {
 	list.mutex.Lock()
 	defer list.mutex.Unlock()
 	if val, ok := list.byID[id]; ok {
-		val.GameAppId = gameAppID
+		val.GameAppID = gameAppID
 	}
 }
 
-func (list *FriendsList) SetGameId(id steamid.SteamID, gameID uint64) {
+func (list *FriendsList) SetGameID(id steamid.SteamID, gameID uint64) {
 	list.mutex.Lock()
 	defer list.mutex.Unlock()
 	if val, ok := list.byID[id]; ok {
-		val.GameId = gameID
+		val.GameID = gameID
 	}
 }
 
@@ -135,13 +135,13 @@ func (list *FriendsList) SetGameName(id steamid.SteamID, name string) {
 
 // A Friend
 type Friend struct {
-	SteamId           steamid.SteamID `json:",string"`
+	SteamID           steamid.SteamID `json:",string"`
 	Name              string
 	Avatar            string
 	Relationship      steamlang.EFriendRelationship
 	PersonaState      steamlang.EPersonaState
 	PersonaStateFlags steamlang.EPersonaStateFlag
-	GameAppId         uint32
-	GameId            uint64 `json:",string"`
+	GameAppID         uint32
+	GameID            uint64 `json:",string"`
 	GameName          string
 }

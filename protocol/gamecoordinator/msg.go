@@ -12,26 +12,28 @@ import (
 type IGCMsg interface {
 	protocol.Serializer
 	IsProto() bool
-	GetAppId() uint32
+	GetAppID() uint32
 	GetMsgType() uint32
 
-	GetTargetJobId() protocol.JobId
-	SetTargetJobId(protocol.JobId)
-	GetSourceJobId() protocol.JobId
-	SetSourceJobId(protocol.JobId)
+	GetTargetJobID() protocol.JobID
+	SetTargetJobID(protocol.JobID)
+	GetSourceJobID() protocol.JobID
+	SetSourceJobID(protocol.JobID)
 }
 
 type GCMsgProtobuf struct {
-	AppId  uint32
+	AppID  uint32
 	Header *steamlang.MsgGCHdrProtoBuf
 	Body   proto.Message
 }
+
+var _ IGCMsg = (*GCMsgProtobuf)(nil)
 
 func NewGCMsgProtobuf(appID, msgType uint32, body proto.Message) *GCMsgProtobuf {
 	hdr := steamlang.NewMsgGCHdrProtoBuf()
 	hdr.Msg = msgType
 	return &GCMsgProtobuf{
-		AppId:  appID,
+		AppID:  appID,
 		Header: hdr,
 		Body:   body,
 	}
@@ -41,27 +43,27 @@ func (g *GCMsgProtobuf) IsProto() bool {
 	return true
 }
 
-func (g *GCMsgProtobuf) GetAppId() uint32 {
-	return g.AppId
+func (g *GCMsgProtobuf) GetAppID() uint32 {
+	return g.AppID
 }
 
 func (g *GCMsgProtobuf) GetMsgType() uint32 {
 	return g.Header.Msg
 }
 
-func (g *GCMsgProtobuf) GetTargetJobId() protocol.JobId {
-	return protocol.JobId(g.Header.Proto.GetJobidTarget())
+func (g *GCMsgProtobuf) GetTargetJobID() protocol.JobID {
+	return protocol.JobID(g.Header.Proto.GetJobidTarget())
 }
 
-func (g *GCMsgProtobuf) SetTargetJobId(job protocol.JobId) {
+func (g *GCMsgProtobuf) SetTargetJobID(job protocol.JobID) {
 	g.Header.Proto.JobidTarget = proto.Uint64(uint64(job))
 }
 
-func (g *GCMsgProtobuf) GetSourceJobId() protocol.JobId {
-	return protocol.JobId(g.Header.Proto.GetJobidSource())
+func (g *GCMsgProtobuf) GetSourceJobID() protocol.JobID {
+	return protocol.JobID(g.Header.Proto.GetJobidSource())
 }
 
-func (g *GCMsgProtobuf) SetSourceJobId(job protocol.JobId) {
+func (g *GCMsgProtobuf) SetSourceJobID(job protocol.JobID) {
 	g.Header.Proto.JobidSource = proto.Uint64(uint64(job))
 }
 
@@ -79,15 +81,17 @@ func (g *GCMsgProtobuf) Serialize(w io.Writer) error {
 }
 
 type GCMsg struct {
-	AppId   uint32
+	AppID   uint32
 	MsgType uint32
 	Header  *steamlang.MsgGCHdr
 	Body    protocol.Serializer
 }
 
+var _ IGCMsg = (*GCMsg)(nil)
+
 func NewGCMsg(appID, msgType uint32, body protocol.Serializer) *GCMsg {
 	return &GCMsg{
-		AppId:   appID,
+		AppID:   appID,
 		MsgType: msgType,
 		Header:  steamlang.NewMsgGCHdr(),
 		Body:    body,
@@ -98,27 +102,27 @@ func (g *GCMsg) GetMsgType() uint32 {
 	return g.MsgType
 }
 
-func (g *GCMsg) GetAppId() uint32 {
-	return g.AppId
+func (g *GCMsg) GetAppID() uint32 {
+	return g.AppID
 }
 
 func (g *GCMsg) IsProto() bool {
 	return false
 }
 
-func (g *GCMsg) GetTargetJobId() protocol.JobId {
-	return protocol.JobId(g.Header.TargetJobID)
+func (g *GCMsg) GetTargetJobID() protocol.JobID {
+	return protocol.JobID(g.Header.TargetJobID)
 }
 
-func (g *GCMsg) SetTargetJobId(job protocol.JobId) {
+func (g *GCMsg) SetTargetJobID(job protocol.JobID) {
 	g.Header.TargetJobID = uint64(job)
 }
 
-func (g *GCMsg) GetSourceJobId() protocol.JobId {
-	return protocol.JobId(g.Header.SourceJobID)
+func (g *GCMsg) GetSourceJobID() protocol.JobID {
+	return protocol.JobID(g.Header.SourceJobID)
 }
 
-func (g *GCMsg) SetSourceJobId(job protocol.JobId) {
+func (g *GCMsg) SetSourceJobID(job protocol.JobID) {
 	g.Header.SourceJobID = uint64(job)
 }
 

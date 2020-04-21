@@ -11,10 +11,10 @@ import (
 	"github.com/13k/go-steam/steamid"
 )
 
-type InventoryApps map[string]*InventoryApp
+type Apps map[string]*App
 
-func (i *InventoryApps) Get(appID uint32) (*InventoryApp, error) {
-	iMap := (map[string]*InventoryApp)(*i)
+func (i *Apps) Get(appID uint32) (*App, error) {
+	iMap := (map[string]*App)(*i)
 
 	if inventoryApp, ok := iMap[strconv.FormatUint(uint64(appID), 10)]; ok {
 		return inventoryApp, nil
@@ -23,12 +23,12 @@ func (i *InventoryApps) Get(appID uint32) (*InventoryApp, error) {
 	return nil, fmt.Errorf("inventory app not found")
 }
 
-func (i *InventoryApps) ToMap() map[string]*InventoryApp {
-	return (map[string]*InventoryApp)(*i)
+func (i *Apps) ToMap() map[string]*App {
+	return (map[string]*App)(*i)
 }
 
-type InventoryApp struct {
-	AppId            uint32
+type App struct {
+	AppID            uint32
 	Name             string
 	Icon             string
 	Link             string
@@ -55,12 +55,12 @@ func (c *Contexts) ToMap() map[string]*Context {
 }
 
 type Context struct {
-	ContextId  uint64 `json:"id,string"`
+	ContextID  uint64 `json:"id,string"`
 	AssetCount uint32 `json:"asset_count"`
 	Name       string
 }
 
-func GetInventoryApps(client *http.Client, steamID steamid.SteamID) (InventoryApps, error) {
+func GetApps(client *http.Client, steamID steamid.SteamID) (Apps, error) {
 	resp, err := http.Get("http://steamcommunity.com/profiles/" + steamID.FormatString() + "/inventory/")
 
 	if err != nil {
@@ -77,17 +77,17 @@ func GetInventoryApps(client *http.Client, steamID steamid.SteamID) (InventoryAp
 
 	// TODO: investigate a better heuristic than this
 	reg := regexp.MustCompile("var g_rgAppContextData = (.*?);")
-	inventoryAppsMatches := reg.FindSubmatch(respBody)
+	matches := reg.FindSubmatch(respBody)
 
-	if inventoryAppsMatches == nil {
+	if matches == nil {
 		return nil, fmt.Errorf("profile inventory not found in steam response")
 	}
 
-	var inventoryApps InventoryApps
+	var apps Apps
 
-	if err = json.Unmarshal(inventoryAppsMatches[1], &inventoryApps); err != nil {
+	if err = json.Unmarshal(matches[1], &apps); err != nil {
 		return nil, err
 	}
 
-	return inventoryApps, nil
+	return apps, nil
 }

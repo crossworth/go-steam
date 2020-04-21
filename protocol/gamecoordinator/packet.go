@@ -11,17 +11,17 @@ import (
 
 // An incoming, partially unread message from the Game Coordinator.
 type GCPacket struct {
-	AppId       uint32
+	AppID       uint32
 	MsgType     uint32
 	IsProto     bool
 	GCName      string
 	Body        []byte
-	TargetJobId protocol.JobId
+	TargetJobID protocol.JobID
 }
 
 func NewGCPacket(wrapper *pb.CMsgGCClient) (*GCPacket, error) {
 	packet := &GCPacket{
-		AppId:   wrapper.GetAppid(),
+		AppID:   wrapper.GetAppid(),
 		MsgType: wrapper.GetMsgtype(),
 		GCName:  wrapper.GetGcname(),
 	}
@@ -39,7 +39,7 @@ func NewGCPacket(wrapper *pb.CMsgGCClient) (*GCPacket, error) {
 			return nil, err
 		}
 
-		packet.TargetJobId = protocol.JobId(header.Proto.GetJobidTarget())
+		packet.TargetJobID = protocol.JobID(header.Proto.GetJobidTarget())
 	} else {
 		header := steamlang.NewMsgGCHdr()
 
@@ -47,7 +47,7 @@ func NewGCPacket(wrapper *pb.CMsgGCClient) (*GCPacket, error) {
 			return nil, err
 		}
 
-		packet.TargetJobId = protocol.JobId(header.TargetJobID)
+		packet.TargetJobID = protocol.JobID(header.TargetJobID)
 	}
 
 	body := make([]byte, r.Len())

@@ -64,19 +64,19 @@ func (g *GameCoordinator) Write(msg gc.IGCMsg) {
 
 	g.client.Write(protocol.NewClientMsgProtobuf(steamlang.EMsg_ClientToGC, &pb.CMsgGCClient{
 		Msgtype: proto.Uint32(msgType),
-		Appid:   proto.Uint32(msg.GetAppId()),
+		Appid:   proto.Uint32(msg.GetAppID()),
 		Payload: buf.Bytes(),
 	}))
 }
 
 // Sets you in the given games. Specify none to quit all games.
-func (g *GameCoordinator) SetGamesPlayed(appIds ...uint64) {
-	games := make([]*pb.CMsgClientGamesPlayed_GamePlayed, 0)
+func (g *GameCoordinator) SetGamesPlayed(appIDs ...uint64) {
+	games := make([]*pb.CMsgClientGamesPlayed_GamePlayed, len(appIDs))
 
-	for _, appId := range appIds {
-		games = append(games, &pb.CMsgClientGamesPlayed_GamePlayed{
-			GameId: proto.Uint64(appId),
-		})
+	for i, appID := range appIDs {
+		games[i] = &pb.CMsgClientGamesPlayed_GamePlayed{
+			GameId: proto.Uint64(appID),
+		}
 	}
 
 	g.client.Write(protocol.NewClientMsgProtobuf(steamlang.EMsg_ClientGamesPlayed, &pb.CMsgClientGamesPlayed{
