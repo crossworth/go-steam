@@ -1,4 +1,4 @@
-package tradeapi
+package api
 
 import (
 	"encoding/json"

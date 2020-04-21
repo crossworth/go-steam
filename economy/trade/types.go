@@ -1,7 +1,7 @@
 package trade
 
 import (
-	"github.com/13k/go-steam/trade/tradeapi"
+	"github.com/13k/go-steam/economy/trade/api"
 )
 
 type EndReason uint
@@ -17,7 +17,7 @@ type EndEvent struct {
 	Reason EndReason
 }
 
-func newItem(event *tradeapi.Event) *Item {
+func newItem(event *api.Event) *Item {
 	return &Item{
 		event.AppID,
 		event.ContextID,
@@ -42,7 +42,7 @@ type ItemRemovedEvent struct {
 type ReadyEvent struct{}
 type UnreadyEvent struct{}
 
-func newCurrency(event *tradeapi.Event) *Currency {
+func newCurrency(event *api.Event) *Currency {
 	return &Currency{
 		event.AppID,
 		event.ContextID,

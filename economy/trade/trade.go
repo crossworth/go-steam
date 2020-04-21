@@ -4,8 +4,8 @@ import (
 	"errors"
 	"time"
 
+	"github.com/13k/go-steam/economy/trade/api"
 	"github.com/13k/go-steam/steamid"
-	"github.com/13k/go-steam/trade/tradeapi"
 )
 
 const pollTimeout = time.Second
@@ -17,23 +17,20 @@ type Trade struct {
 
 	lastPoll     time.Time
 	queuedEvents []interface{}
-	api          *tradeapi.Trade
+	api          *api.Client
 }
 
 func New(sessionID, steamLogin, steamLoginSecure string, other steamid.SteamID) (*Trade, error) {
-	api, err := tradeapi.New(sessionID, steamLogin, steamLoginSecure, other)
+	client, err := api.New(sessionID, steamLogin, steamLoginSecure, other)
 
 	if err != nil {
 		return nil, err
 	}
 
 	t := &Trade{
-		ThemID:       other,
-		MeReady:      false,
-		ThemReady:    false,
-		lastPoll:     time.Unix(0, 0),
-		queuedEvents: nil,
-		api:          api,
+		ThemID:   other,
+		lastPoll: time.Unix(0, 0),
+		api:      client,
 	}
 
 	return t, nil
@@ -50,7 +47,7 @@ func (t *Trade) Events() []interface{} {
 	return qe
 }
 
-func (t *Trade) onStatus(status *tradeapi.Result) error {
+func (t *Trade) onStatus(status *api.Result) error {
 	if !status.Success {
 		return errors.New("trade: returned status not successful! error message: " + status.Error)
 	}
@@ -62,15 +59,15 @@ func (t *Trade) onStatus(status *tradeapi.Result) error {
 	}
 
 	switch status.TradeStatus {
-	case tradeapi.StatusComplete:
+	case api.StatusComplete:
 		t.addEvent(&EndEvent{EndReasonComplete})
-	case tradeapi.StatusCanceled:
+	case api.StatusCanceled:
 		t.addEvent(&EndEvent{EndReasonCanceled})
-	case tradeapi.StatusTimeout:
+	case api.StatusTimeout:
 		t.addEvent(&EndEvent{EndReasonTimeout})
-	case tradeapi.StatusFailed:
+	case api.StatusFailed:
 		t.addEvent(&EndEvent{EndReasonFailed})
-	case tradeapi.StatusOpen:
+	case api.StatusOpen:
 		// nothing
 	default:
 		// ignore too
@@ -80,7 +77,7 @@ func (t *Trade) onStatus(status *tradeapi.Result) error {
 	return nil
 }
 
-func (t *Trade) updateEvents(events tradeapi.EventList) {
+func (t *Trade) updateEvents(events api.EventList) {
 	if len(events) == 0 {
 		return
 	}
@@ -101,23 +98,23 @@ func (t *Trade) updateEvents(events tradeapi.EventList) {
 		}
 
 		switch event.Action {
-		case tradeapi.ActionAddItem:
+		case api.ActionAddItem:
 			t.addEvent(&ItemAddedEvent{newItem(event)})
-		case tradeapi.ActionRemoveItem:
+		case api.ActionRemoveItem:
 			t.addEvent(&ItemRemovedEvent{newItem(event)})
-		case tradeapi.ActionReady:
+		case api.ActionReady:
 			t.ThemReady = true
 			t.addEvent(&ReadyEvent{})
-		case tradeapi.ActionUnready:
+		case api.ActionUnready:
 			t.ThemReady = false
 			t.addEvent(&UnreadyEvent{})
-		case tradeapi.ActionSetCurrency:
+		case api.ActionSetCurrency:
 			t.addEvent(&SetCurrencyEvent{
 				newCurrency(event),
 				event.OldAmount,
 				event.NewAmount,
 			})
-		case tradeapi.ActionChatMessage:
+		case api.ActionChatMessage:
 			t.addEvent(&ChatEvent{
 				event.Text,
 			})

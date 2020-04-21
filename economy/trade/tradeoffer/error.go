@@ -14,6 +14,7 @@ type SteamError struct {
 func (e *SteamError) Error() string {
 	return e.msg
 }
-func newSteamErrorf(format string, a ...interface{}) *SteamError {
-	return &SteamError{fmt.Sprintf(format, a...)}
+
+func newSteamErrorf(format string, args ...interface{}) *SteamError {
+	return &SteamError{msg: fmt.Sprintf(format, args...)}
 }

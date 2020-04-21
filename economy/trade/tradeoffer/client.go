@@ -408,7 +408,7 @@ func (c *Client) getPartialPartnerInventory(
 }
 
 // Can be used to verify accepted tradeoffer and find out received asset ids
-func (c *Client) GetTradeReceipt(tradeID uint64) ([]*TradeReceiptItem, error) {
+func (c *Client) GetTradeReceipt(tradeID uint64) ([]*ReceiptItem, error) {
 	url := fmt.Sprintf("https://steamcommunity.com/trade/%d/receipt", tradeID)
 	resp, err := c.client.Get(url)
 
@@ -582,8 +582,8 @@ func (c *Client) GetTradeReceiptWithRetry(
 	tradeID uint64,
 	retryCount int,
 	retryDelay time.Duration,
-) ([]*TradeReceiptItem, error) {
-	var res []*TradeReceiptItem
+) ([]*ReceiptItem, error) {
+	var res []*ReceiptItem
 	return res, withRetry(
 		func() (err error) {
 			res, err = c.GetTradeReceipt(tradeID)

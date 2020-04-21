@@ -4,12 +4,12 @@ import (
 	"time"
 
 	"github.com/13k/go-steam/economy/inventory"
-	"github.com/13k/go-steam/trade/tradeapi"
+	"github.com/13k/go-steam/economy/trade/api"
 )
 
 type Slot uint
 
-func (t *Trade) action(status *tradeapi.Result, err error) error {
+func (t *Trade) action(status *api.Result, err error) error {
 	if err != nil {
 		return err
 	}
@@ -49,7 +49,7 @@ func (t *Trade) GetOwnInventory(contextID uint64, appID uint32) (*inventory.Inve
 	return t.api.GetOwnInventory(contextID, appID)
 }
 
-func (t *Trade) GetMain() (*tradeapi.Main, error) {
+func (t *Trade) GetMain() (*api.Main, error) {
 	return t.api.GetMain()
 }
 
