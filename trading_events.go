@@ -7,13 +7,13 @@ import (
 
 type TradeProposedEvent struct {
 	RequestId TradeRequestId
-	Other     steamid.SteamId `json:",string"`
+	Other     steamid.SteamID `json:",string"`
 }
 
 type TradeResultEvent struct {
 	RequestId TradeRequestId
 	Response  steamlang.EEconTradeResponse
-	Other     steamid.SteamId `json:",string"`
+	Other     steamid.SteamID `json:",string"`
 	// Number of days Steam Guard is required to have been active
 	NumDaysSteamGuardRequired uint32
 	// Number of days a new device cannot trade for.
@@ -25,5 +25,5 @@ type TradeResultEvent struct {
 }
 
 type TradeSessionStartEvent struct {
-	Other steamid.SteamId `json:",string"`
+	Other steamid.SteamID `json:",string"`
 }

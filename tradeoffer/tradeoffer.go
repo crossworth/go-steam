@@ -66,7 +66,7 @@ type TradeOffer struct {
 	TradeOfferId       uint64                       `json:",string"`
 	TradeId            uint64                       `json:",string"`
 	OtherAccountId     uint32                       `json:"accountid_other"`
-	OtherSteamId       steamid.SteamId              `json:"-"`
+	OtherSteamId       steamid.SteamID              `json:"-"`
 	Message            string                       `json:"message"`
 	ExpirationTime     uint32                       `json:"expiraton_time"`
 	State              TradeOfferState              `json:"trade_offer_state"`
@@ -90,10 +90,10 @@ func (t *TradeOffer) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	if t.OtherAccountId == 0 {
-		t.OtherSteamId = steamid.SteamId(0)
+		t.OtherSteamId = steamid.SteamID(0)
 		return nil
 	}
-	t.OtherSteamId = steamid.SteamId(uint64(t.OtherAccountId) + 76561197960265728)
+	t.OtherSteamId = steamid.SteamID(uint64(t.OtherAccountId) + 76561197960265728)
 	return nil
 }
 

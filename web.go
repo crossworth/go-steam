@@ -104,7 +104,7 @@ func (w *Web) apiLogOn() error {
 
 	data := make(url.Values)
 	data.Add("format", "json")
-	data.Add("steamid", strconv.FormatUint(w.client.SteamId().ToUint64(), 10))
+	data.Add("steamid", w.client.SteamId().FormatString())
 	data.Add("sessionkey", string(cryptedSessionKey))
 	data.Add("encrypted_loginkey", string(cryptedLoginKey))
 
@@ -156,7 +156,8 @@ func (w *Web) handleNewLoginKey(packet *protocol.Packet) {
 	w.client.Write(protocol.NewClientMsgProtobuf(steamlang.EMsg_ClientNewLoginKeyAccepted, acceptMsg))
 
 	// number -> string -> bytes -> base64
-	w.SessionId = base64.StdEncoding.EncodeToString([]byte(strconv.FormatUint(uint64(msg.GetUniqueId()), 10)))
+	uniqueIDStr := strconv.FormatUint(uint64(msg.GetUniqueId()), 10)
+	w.SessionId = base64.StdEncoding.EncodeToString([]byte(uniqueIDStr))
 
 	w.client.Emit(&WebSessionIdEvent{})
 }

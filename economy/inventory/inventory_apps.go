@@ -60,8 +60,8 @@ type Context struct {
 	Name       string
 }
 
-func GetInventoryApps(client *http.Client, steamID steamid.SteamId) (InventoryApps, error) {
-	resp, err := http.Get("http://steamcommunity.com/profiles/" + steamID.ToString() + "/inventory/")
+func GetInventoryApps(client *http.Client, steamID steamid.SteamID) (InventoryApps, error) {
+	resp, err := http.Get("http://steamcommunity.com/profiles/" + steamID.FormatString() + "/inventory/")
 
 	if err != nil {
 		return nil, err

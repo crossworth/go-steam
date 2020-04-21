@@ -28,7 +28,7 @@ func (t *Trading) HandlePacket(packet *protocol.Packet) {
 		packet.ReadProtoMsg(msg)
 		t.client.Emit(&TradeProposedEvent{
 			RequestId: TradeRequestId(msg.GetTradeRequestId()),
-			Other:     steamid.SteamId(msg.GetOtherSteamid()),
+			Other:     steamid.SteamID(msg.GetOtherSteamid()),
 		})
 	case steamlang.EMsg_EconTrading_InitiateTradeResult:
 		msg := &pb.CMsgTrading_InitiateTradeResponse{}
@@ -36,7 +36,7 @@ func (t *Trading) HandlePacket(packet *protocol.Packet) {
 		t.client.Emit(&TradeResultEvent{
 			RequestId: TradeRequestId(msg.GetTradeRequestId()),
 			Response:  steamlang.EEconTradeResponse(msg.GetResponse()),
-			Other:     steamid.SteamId(msg.GetOtherSteamid()),
+			Other:     steamid.SteamID(msg.GetOtherSteamid()),
 
 			NumDaysSteamGuardRequired:            msg.GetSteamguardRequiredDays(),
 			NumDaysNewDeviceCooldown:             msg.GetNewDeviceCooldownDays(),
@@ -47,14 +47,14 @@ func (t *Trading) HandlePacket(packet *protocol.Packet) {
 		msg := &pb.CMsgTrading_StartSession{}
 		packet.ReadProtoMsg(msg)
 		t.client.Emit(&TradeSessionStartEvent{
-			Other: steamid.SteamId(msg.GetOtherSteamid()),
+			Other: steamid.SteamID(msg.GetOtherSteamid()),
 		})
 	}
 }
 
 // Requests a trade. You'll receive a TradeResultEvent if the request fails or
 // if the friend accepted the trade.
-func (t *Trading) RequestTrade(other steamid.SteamId) {
+func (t *Trading) RequestTrade(other steamid.SteamID) {
 	pbmsg := &pb.CMsgTrading_InitiateTradeRequest{
 		OtherSteamid: proto.Uint64(uint64(other)),
 	}
@@ -79,7 +79,7 @@ func (t *Trading) RespondRequest(requestId TradeRequestId, accept bool) {
 }
 
 // This cancels a request made with RequestTrade.
-func (t *Trading) CancelRequest(other steamid.SteamId) {
+func (t *Trading) CancelRequest(other steamid.SteamID) {
 	pbmsg := &pb.CMsgTrading_CancelTradeRequest{
 		OtherSteamid: proto.Uint64(uint64(other)),
 	}

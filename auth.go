@@ -81,9 +81,13 @@ func (a *Auth) LogOn(details *LogOnDetails) error {
 		logon.ShouldRememberPassword = proto.Bool(details.ShouldRememberPassword)
 	}
 
-	id := steamid.NewIdAdv(0, 1, int32(steamlang.EUniverse_Public), steamlang.EAccountType_Individual)
+	a.client.setSteamID(steamid.New(
+		steamlang.EAccountType_Individual,
+		steamlang.EUniverse_Public,
+		0,
+		steamid.DesktopInstance,
+	))
 
-	a.client.setSteamID(id)
 	a.client.Write(protocol.NewClientMsgProtobuf(steamlang.EMsg_ClientLogon, logon))
 
 	return nil
@@ -116,7 +120,7 @@ func (a *Auth) handleLogOnResponse(packet *protocol.Packet) {
 	switch result := steamlang.EResult(body.GetEresult()); result {
 	case steamlang.EResult_OK:
 		a.client.setSessionID(msg.Header.Proto.GetClientSessionid())
-		a.client.setSteamID(steamid.SteamId(msg.Header.Proto.GetSteamid()))
+		a.client.setSteamID(steamid.SteamID(msg.Header.Proto.GetSteamid()))
 		a.client.Web.webLoginKey = *body.WebapiAuthenticateUserNonce
 
 		go a.client.heartbeatLoop(time.Duration(body.GetOutOfGameHeartbeatSeconds()))
@@ -125,7 +129,7 @@ func (a *Auth) handleLogOnResponse(packet *protocol.Packet) {
 			Result:         result,
 			ExtendedResult: steamlang.EResult(body.GetEresultExtended()),
 			AccountFlags:   steamlang.EAccountFlags(body.GetAccountFlags()),
-			ClientSteamId:  steamid.SteamId(body.GetClientSuppliedSteamid()),
+			ClientSteamId:  steamid.SteamID(body.GetClientSuppliedSteamid()),
 			Body:           body,
 		})
 	case steamlang.EResult_Fail, steamlang.EResult_ServiceUnavailable, steamlang.EResult_TryAnotherCM:

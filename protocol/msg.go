@@ -26,8 +26,8 @@ type IClientMsg interface {
 	IMsg
 	GetSessionId() int32
 	SetSessionId(int32)
-	GetSteamId() steamid.SteamId
-	SetSteamId(steamid.SteamId)
+	GetSteamId() steamid.SteamID
+	SetSteamId(steamid.SteamID)
 }
 
 // Represents a protobuf backed client message with session data.
@@ -61,11 +61,11 @@ func (c *ClientMsgProtobuf) SetSessionId(session int32) {
 	c.Header.Proto.ClientSessionid = &session
 }
 
-func (c *ClientMsgProtobuf) GetSteamId() steamid.SteamId {
-	return steamid.SteamId(c.Header.Proto.GetSteamid())
+func (c *ClientMsgProtobuf) GetSteamId() steamid.SteamID {
+	return steamid.SteamID(c.Header.Proto.GetSteamid())
 }
 
-func (c *ClientMsgProtobuf) SetSteamId(s steamid.SteamId) {
+func (c *ClientMsgProtobuf) SetSteamId(s steamid.SteamID) {
 	c.Header.Proto.Steamid = proto.Uint64(uint64(s))
 }
 
@@ -131,12 +131,12 @@ func (c *ClientMsg) SetSessionId(session int32) {
 	c.Header.SessionID = session
 }
 
-func (c *ClientMsg) GetSteamId() steamid.SteamId {
-	return steamid.SteamId(c.Header.SteamID)
+func (c *ClientMsg) GetSteamId() steamid.SteamID {
+	return steamid.SteamID(c.Header.SteamID)
 }
 
-func (c *ClientMsg) SetSteamId(s steamid.SteamId) {
-	c.Header.SteamID = s.ToUint64()
+func (c *ClientMsg) SetSteamId(s steamid.SteamID) {
+	c.Header.SteamID = s.Uint64()
 }
 
 func (c *ClientMsg) GetTargetJobId() JobId {

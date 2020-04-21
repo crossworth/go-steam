@@ -15,12 +15,12 @@ import (
 // 	}
 type GroupsList struct {
 	mutex sync.RWMutex
-	byId  map[steamid.SteamId]*Group
+	byId  map[steamid.SteamID]*Group
 }
 
 // Returns a new groups list
 func NewGroupsList() *GroupsList {
-	return &GroupsList{byId: make(map[steamid.SteamId]*Group)}
+	return &GroupsList{byId: make(map[steamid.SteamID]*Group)}
 }
 
 // Adds a group to the group list
@@ -34,18 +34,18 @@ func (list *GroupsList) Add(group Group) {
 }
 
 // Remove removes a group from the group list
-func (list *GroupsList) Remove(id steamid.SteamId) {
+func (list *GroupsList) Remove(id steamid.SteamID) {
 	list.mutex.Lock()
 	defer list.mutex.Unlock()
 	delete(list.byId, id)
 }
 
 // GetCopy returns a copy of the groups map
-func (list *GroupsList) GetCopy() map[steamid.SteamId]Group {
+func (list *GroupsList) GetCopy() map[steamid.SteamID]Group {
 	list.mutex.RLock()
 	defer list.mutex.RUnlock()
 
-	glist := make(map[steamid.SteamId]Group)
+	glist := make(map[steamid.SteamID]Group)
 
 	for key, group := range list.byId {
 		glist[key] = *group
@@ -55,7 +55,7 @@ func (list *GroupsList) GetCopy() map[steamid.SteamId]Group {
 }
 
 // Returns a copy of the group of a given SteamId
-func (list *GroupsList) ById(id steamid.SteamId) (Group, error) {
+func (list *GroupsList) ById(id steamid.SteamID) (Group, error) {
 	list.mutex.RLock()
 	defer list.mutex.RUnlock()
 	// id = id.ChatToClan()
@@ -73,7 +73,7 @@ func (list *GroupsList) Count() int {
 }
 
 //Setter methods
-func (list *GroupsList) SetName(id steamid.SteamId, name string) {
+func (list *GroupsList) SetName(id steamid.SteamID, name string) {
 	list.mutex.Lock()
 	defer list.mutex.Unlock()
 	// id = id.ChatToClan()
@@ -82,7 +82,7 @@ func (list *GroupsList) SetName(id steamid.SteamId, name string) {
 	}
 }
 
-func (list *GroupsList) SetAvatar(id steamid.SteamId, hash string) {
+func (list *GroupsList) SetAvatar(id steamid.SteamID, hash string) {
 	list.mutex.Lock()
 	defer list.mutex.Unlock()
 	// id = id.ChatToClan()
@@ -91,7 +91,7 @@ func (list *GroupsList) SetAvatar(id steamid.SteamId, hash string) {
 	}
 }
 
-func (list *GroupsList) SetRelationship(id steamid.SteamId, relationship steamlang.EClanRelationship) {
+func (list *GroupsList) SetRelationship(id steamid.SteamID, relationship steamlang.EClanRelationship) {
 	list.mutex.Lock()
 	defer list.mutex.Unlock()
 	// id = id.ChatToClan()
@@ -100,7 +100,7 @@ func (list *GroupsList) SetRelationship(id steamid.SteamId, relationship steamla
 	}
 }
 
-func (list *GroupsList) SetMemberTotalCount(id steamid.SteamId, count uint32) {
+func (list *GroupsList) SetMemberTotalCount(id steamid.SteamID, count uint32) {
 	list.mutex.Lock()
 	defer list.mutex.Unlock()
 	// id = id.ChatToClan()
@@ -109,7 +109,7 @@ func (list *GroupsList) SetMemberTotalCount(id steamid.SteamId, count uint32) {
 	}
 }
 
-func (list *GroupsList) SetMemberOnlineCount(id steamid.SteamId, count uint32) {
+func (list *GroupsList) SetMemberOnlineCount(id steamid.SteamID, count uint32) {
 	list.mutex.Lock()
 	defer list.mutex.Unlock()
 	// id = id.ChatToClan()
@@ -118,7 +118,7 @@ func (list *GroupsList) SetMemberOnlineCount(id steamid.SteamId, count uint32) {
 	}
 }
 
-func (list *GroupsList) SetMemberChattingCount(id steamid.SteamId, count uint32) {
+func (list *GroupsList) SetMemberChattingCount(id steamid.SteamID, count uint32) {
 	list.mutex.Lock()
 	defer list.mutex.Unlock()
 	// id = id.ChatToClan()
@@ -127,7 +127,7 @@ func (list *GroupsList) SetMemberChattingCount(id steamid.SteamId, count uint32)
 	}
 }
 
-func (list *GroupsList) SetMemberInGameCount(id steamid.SteamId, count uint32) {
+func (list *GroupsList) SetMemberInGameCount(id steamid.SteamID, count uint32) {
 	list.mutex.Lock()
 	defer list.mutex.Unlock()
 	// id = id.ChatToClan()
@@ -138,7 +138,7 @@ func (list *GroupsList) SetMemberInGameCount(id steamid.SteamId, count uint32) {
 
 // A Group
 type Group struct {
-	SteamId             steamid.SteamId `json:",string"`
+	SteamId             steamid.SteamID `json:",string"`
 	Name                string
 	Avatar              string
 	Relationship        steamlang.EClanRelationship

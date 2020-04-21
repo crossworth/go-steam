@@ -23,7 +23,7 @@ const tradeURL = "https://steamcommunity.com/trade/%d/"
 
 type Trade struct {
 	client *http.Client
-	other  steamid.SteamId
+	other  steamid.SteamID
 
 	LogPos  uint // not automatically updated
 	Version uint // Incremented for each item change by Steam; not automatically updated.
@@ -35,7 +35,7 @@ type Trade struct {
 
 // New creates a new Trade based on the given cookies `sessionid`, `steamLogin`, `steamLoginSecure` and
 // the trade partner's Steam ID.
-func New(sessionID, steamLogin, steamLoginSecure string, other steamid.SteamId) (*Trade, error) {
+func New(sessionID, steamLogin, steamLoginSecure string, other steamid.SteamID) (*Trade, error) {
 	client := &http.Client{}
 	client.Timeout = 10 * time.Second
 

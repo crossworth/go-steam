@@ -116,12 +116,12 @@ func (c *Client) GetNextJobId() protocol.JobId {
 }
 
 // SteamId returns the client's steam ID.
-func (c *Client) SteamId() steamid.SteamId {
-	return steamid.SteamId(atomic.LoadUint64(&c.steamID))
+func (c *Client) SteamId() steamid.SteamID {
+	return steamid.SteamID(atomic.LoadUint64(&c.steamID))
 }
 
-func (c *Client) setSteamID(steamID steamid.SteamId) {
-	atomic.StoreUint64(&c.steamID, steamID.ToUint64())
+func (c *Client) setSteamID(steamID steamid.SteamID) {
+	atomic.StoreUint64(&c.steamID, steamID.Uint64())
 }
 
 // SessionId returns the session id.

@@ -74,7 +74,7 @@ func (e *EventList) UnmarshalJSON(data []byte) error {
 }
 
 type Event struct {
-	SteamId   steamid.SteamId `json:",string"`
+	SteamId   steamid.SteamID `json:",string"`
 	Action    Action          `json:",string"`
 	Timestamp uint64
 

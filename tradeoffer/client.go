@@ -231,7 +231,7 @@ type TradeItem struct {
 // In addition, `counteredOfferId` can be non-nil, indicating the trade offer this is a counter for.
 // On success returns trade offer id
 func (c *Client) Create(
-	other steamid.SteamId,
+	other steamid.SteamID,
 	accessToken *string,
 	myItems, theirItems []TradeItem,
 	counteredOfferID *uint64,
@@ -263,7 +263,7 @@ func (c *Client) Create(
 	data := map[string]string{
 		"sessionid":         c.sessionID,
 		"serverid":          "1",
-		"partner":           other.ToString(),
+		"partner":           other.FormatString(),
 		"tradeoffermessage": message,
 		"json_tradeoffer":   string(jto),
 	}
@@ -291,12 +291,12 @@ func (c *Client) Create(
 			data["trade_offer_create_params"] = string(paramsJSON)
 
 			referer = "https://steamcommunity.com/tradeoffer/new/?partner=" +
-				strconv.FormatUint(uint64(other.GetAccountId()), 10) +
+				other.AccountID().FormatString() +
 				"&token=" +
 				*accessToken
 		} else {
 			referer = "https://steamcommunity.com/tradeoffer/new/?partner=" +
-				strconv.FormatUint(uint64(other.GetAccountId()), 10)
+				other.AccountID().FormatString()
 		}
 	}
 
@@ -354,7 +354,7 @@ func (c *Client) GetOwnInventory(contextID uint64, appID uint32) (*inventory.Inv
 }
 
 func (c *Client) GetPartnerInventory(
-	other steamid.SteamId,
+	other steamid.SteamID,
 	contextID uint64,
 	appID uint32,
 	offerID *uint64,
@@ -367,7 +367,7 @@ func (c *Client) GetPartnerInventory(
 }
 
 func (c *Client) getPartialPartnerInventory(
-	other steamid.SteamId,
+	other steamid.SteamID,
 	contextID uint64,
 	appID uint32,
 	offerID *uint64,
@@ -375,7 +375,7 @@ func (c *Client) getPartialPartnerInventory(
 ) (*inventory.PartialInventory, error) {
 	data := map[string]string{
 		"sessionid": c.sessionID,
-		"partner":   other.ToString(),
+		"partner":   other.FormatString(),
 		"contextid": strconv.FormatUint(contextID, 10),
 		"appid":     strconv.FormatUint(uint64(appID), 10),
 	}
@@ -397,7 +397,7 @@ func (c *Client) getPartialPartnerInventory(
 		return nil, err
 	}
 
-	req.Header.Add("Referer", baseURL+"?partner="+strconv.FormatUint(uint64(other.GetAccountId()), 10))
+	req.Header.Add("Referer", baseURL+"?partner="+other.AccountID().FormatString())
 
 	return inventory.DoInventoryRequest(c.client, req)
 }
@@ -429,9 +429,9 @@ func (c *Client) GetTradeReceipt(tradeID uint64) ([]*TradeReceiptItem, error) {
 }
 
 // Get duration of escrow in days. Call this before sending a trade offer
-func (c *Client) GetPartnerEscrowDuration(other steamid.SteamId, accessToken *string) (*EscrowDuration, error) {
+func (c *Client) GetPartnerEscrowDuration(other steamid.SteamID, accessToken *string) (*EscrowDuration, error) {
 	data := map[string]string{
-		"partner": strconv.FormatUint(uint64(other.GetAccountId()), 10),
+		"partner": other.AccountID().FormatString(),
 	}
 	if accessToken != nil {
 		data["token"] = *accessToken
@@ -521,7 +521,7 @@ func (c *Client) AcceptWithRetry(offerID uint64, retryCount int, retryDelay time
 }
 
 func (c *Client) CreateWithRetry(
-	other steamid.SteamId,
+	other steamid.SteamID,
 	accessToken *string,
 	myItems, theirItems []TradeItem,
 	counteredOfferID *uint64,
@@ -554,7 +554,7 @@ func (c *Client) GetOwnInventoryWithRetry(
 }
 
 func (c *Client) GetPartnerInventoryWithRetry(
-	other steamid.SteamId,
+	other steamid.SteamID,
 	contextID uint64,
 	appID uint32,
 	offerID *uint64,

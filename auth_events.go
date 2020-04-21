@@ -10,7 +10,7 @@ type LoggedOnEvent struct {
 	Result         steamlang.EResult
 	ExtendedResult steamlang.EResult
 	AccountFlags   steamlang.EAccountFlags
-	ClientSteamId  steamid.SteamId `json:",string"`
+	ClientSteamId  steamid.SteamID `json:",string"`
 	Body           *pb.CMsgClientLogonResponse
 }
 
