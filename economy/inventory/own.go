@@ -3,20 +3,19 @@ package inventory
 import (
 	"fmt"
 	"net/http"
-	"strconv"
 )
 
 func GetOwnPartialInventory(
 	client *http.Client,
 	contextID uint64,
 	appID uint32,
-	start *uint,
+	start uint,
 ) (*PartialInventory, error) {
 	// TODO: the "trading" parameter can be left off to return non-tradable items too
 	url := fmt.Sprintf("http://steamcommunity.com/my/inventory/json/%d/%d?trading=1", appID, contextID)
 
-	if start != nil {
-		url += "&start=" + strconv.FormatUint(uint64(*start), 10)
+	if start != 0 {
+		url += fmt.Sprintf("&start=%d", start)
 	}
 
 	req, err := http.NewRequest("GET", url, nil)
@@ -30,8 +29,8 @@ func GetOwnPartialInventory(
 
 func GetOwnInventory(client *http.Client, contextID uint64, appID uint32) (*Inventory, error) {
 	return GetFullInventory(func() (*PartialInventory, error) {
-		return GetOwnPartialInventory(client, contextID, appID, nil)
+		return GetOwnPartialInventory(client, contextID, appID, 0)
 	}, func(start uint) (*PartialInventory, error) {
-		return GetOwnPartialInventory(client, contextID, appID, &start)
+		return GetOwnPartialInventory(client, contextID, appID, start)
 	})
 }

@@ -124,7 +124,7 @@ func (t *Trade) GetStatus() (*Result, error) {
 }
 
 // Thread-safe.
-func (t *Trade) GetForeignInventory(contextID uint64, appID uint32, start *uint) (*inventory.PartialInventory, error) {
+func (t *Trade) GetForeignInventory(contextID uint64, appID uint32, start uint) (*inventory.PartialInventory, error) {
 	data := map[string]string{
 		"sessionid": t.sessionID,
 		"steamid":   fmt.Sprintf("%d", t.other),
@@ -132,8 +132,8 @@ func (t *Trade) GetForeignInventory(contextID uint64, appID uint32, start *uint)
 		"appid":     strconv.FormatUint(uint64(appID), 10),
 	}
 
-	if start != nil {
-		data["start"] = strconv.FormatUint(uint64(*start), 10)
+	if start != 0 {
+		data["start"] = strconv.FormatUint(uint64(start), 10)
 	}
 
 	req, err := http.NewRequest("GET", t.baseURL+"foreigninventory?"+netutil.ToURLValues(data).Encode(), nil)

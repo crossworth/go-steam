@@ -23,25 +23,30 @@ func (m *MoreStart) UnmarshalJSON(data []byte) error {
 	if bytes.Equal(data, []byte("false")) {
 		return nil
 	}
+
 	return json.Unmarshal(data, (*uint)(m))
 }
 
 func PerformRequest(client *http.Client, req *http.Request) (*PartialInventory, error) {
 	resp, err := client.Do(req)
+
 	if err != nil {
 		return nil, err
 	}
+
 	defer resp.Body.Close()
 
 	inv := &PartialInventory{}
-	err = json.NewDecoder(resp.Body).Decode(inv)
-	if err != nil {
+
+	if err = json.NewDecoder(resp.Body).Decode(inv); err != nil {
 		return nil, err
 	}
+
 	return inv, nil
 }
 
 // TODO: use only one iterator function and indicate the first page with start = 0
+// type PartialInventoryFetcher func(start uint) (*PartialInventory, error)
 
 func GetFullInventory(
 	getFirst func() (*PartialInventory, error),

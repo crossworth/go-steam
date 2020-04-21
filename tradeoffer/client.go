@@ -73,7 +73,7 @@ func (c *Client) GetOffers(
 	getDescriptions bool,
 	activeOnly bool,
 	historicalOnly bool,
-	timeHistoricalCutoff *uint32,
+	timeHistoricalCutoff uint32,
 ) (*MultiResult, error) {
 	if !getSent && !getReceived {
 		return nil, errors.New("getSent and getReceived can't be both false")
@@ -104,8 +104,8 @@ func (c *Client) GetOffers(
 		params["historical_only"] = "1"
 	}
 
-	if timeHistoricalCutoff != nil {
-		params["time_historical_cutoff"] = strconv.FormatUint(uint64(*timeHistoricalCutoff), 10)
+	if timeHistoricalCutoff != 0 {
+		params["time_historical_cutoff"] = strconv.FormatUint(uint64(timeHistoricalCutoff), 10)
 	}
 
 	resp, err := c.client.Get(fmt.Sprintf(apiURL, "GetTradeOffers", 1) + "?" + netutil.ToURLValues(params).Encode())
@@ -125,7 +125,7 @@ func (c *Client) GetOffers(
 	}
 
 	if t.Response == nil {
-		return nil, newSteamErrorf("steam returned empty offers result\n")
+		return nil, newSteamErrorf("steam returned empty offers result")
 	}
 
 	return t.Response, nil
@@ -237,9 +237,9 @@ type TradeItem struct {
 // On success returns trade offer id.
 func (c *Client) Create(
 	other steamid.SteamID,
-	accessToken *string,
+	accessToken string,
 	myItems, theirItems []TradeItem,
-	counteredOfferID *uint64,
+	counteredOfferID uint64,
 	message string,
 ) (uint64, error) {
 	// Create new trade offer status
@@ -275,14 +275,13 @@ func (c *Client) Create(
 
 	var referer string
 
-	if counteredOfferID != nil {
-		referer = fmt.Sprintf("https://steamcommunity.com/tradeoffer/%d/", *counteredOfferID)
-		data["tradeofferid_countered"] = strconv.FormatUint(*counteredOfferID, 10)
-	} else {
-		// Add token for non-friend offers
-		if accessToken != nil {
+	if counteredOfferID != 0 {
+		referer = fmt.Sprintf("https://steamcommunity.com/tradeoffer/%d/", counteredOfferID)
+		data["tradeofferid_countered"] = strconv.FormatUint(counteredOfferID, 10)
+	} else { // Add token for non-friend offers
+		if accessToken != "" {
 			params := map[string]string{
-				"trade_offer_access_token": *accessToken,
+				"trade_offer_access_token": accessToken,
 			}
 
 			var paramsJSON []byte
@@ -295,17 +294,19 @@ func (c *Client) Create(
 
 			data["trade_offer_create_params"] = string(paramsJSON)
 
-			referer = "https://steamcommunity.com/tradeoffer/new/?partner=" +
-				other.AccountID().FormatString() +
-				"&token=" +
-				*accessToken
+			referer = fmt.Sprintf(
+				"https://steamcommunity.com/tradeoffer/new/?partner=%d&token=%s",
+				other.AccountID(),
+				accessToken,
+			)
 		} else {
-			referer = "https://steamcommunity.com/tradeoffer/new/?partner=" +
-				other.AccountID().FormatString()
+			referer = fmt.Sprintf(
+				"https://steamcommunity.com/tradeoffer/new/?partner=%d",
+				other.AccountID(),
+			)
 		}
 	}
 
-	// Create request
 	req, err := netutil.NewPostForm("https://steamcommunity.com/tradeoffer/new/send", netutil.ToURLValues(data))
 
 	if err != nil {
@@ -362,12 +363,12 @@ func (c *Client) GetPartnerInventory(
 	other steamid.SteamID,
 	contextID uint64,
 	appID uint32,
-	offerID *uint64,
+	offerID uint64,
 ) (*inventory.Inventory, error) {
 	return inventory.GetFullInventory(func() (*inventory.PartialInventory, error) {
-		return c.getPartialPartnerInventory(other, contextID, appID, offerID, nil)
+		return c.getPartialPartnerInventory(other, contextID, appID, offerID, 0)
 	}, func(start uint) (*inventory.PartialInventory, error) {
-		return c.getPartialPartnerInventory(other, contextID, appID, offerID, &start)
+		return c.getPartialPartnerInventory(other, contextID, appID, offerID, start)
 	})
 }
 
@@ -375,8 +376,8 @@ func (c *Client) getPartialPartnerInventory(
 	other steamid.SteamID,
 	contextID uint64,
 	appID uint32,
-	offerID *uint64,
-	start *uint,
+	offerID uint64,
+	start uint,
 ) (*inventory.PartialInventory, error) {
 	data := map[string]string{
 		"sessionid": c.sessionID,
@@ -384,14 +385,15 @@ func (c *Client) getPartialPartnerInventory(
 		"contextid": strconv.FormatUint(contextID, 10),
 		"appid":     strconv.FormatUint(uint64(appID), 10),
 	}
-	if start != nil {
-		data["start"] = strconv.FormatUint(uint64(*start), 10)
+
+	if start != 0 {
+		data["start"] = strconv.FormatUint(uint64(start), 10)
 	}
 
 	baseURL := "https://steamcommunity.com/tradeoffer/%v/"
 
-	if offerID != nil {
-		baseURL = fmt.Sprintf(baseURL, *offerID)
+	if offerID != 0 {
+		baseURL = fmt.Sprintf(baseURL, offerID)
 	} else {
 		baseURL = fmt.Sprintf(baseURL, "new")
 	}
@@ -434,13 +436,15 @@ func (c *Client) GetTradeReceipt(tradeID uint64) ([]*TradeReceiptItem, error) {
 }
 
 // Get duration of escrow in days. Call this before sending a trade offer
-func (c *Client) GetPartnerEscrowDuration(other steamid.SteamID, accessToken *string) (*EscrowDuration, error) {
+func (c *Client) GetPartnerEscrowDuration(other steamid.SteamID, accessToken string) (*EscrowDuration, error) {
 	data := map[string]string{
 		"partner": other.AccountID().FormatString(),
 	}
-	if accessToken != nil {
-		data["token"] = *accessToken
+
+	if accessToken != "" {
+		data["token"] = accessToken
 	}
+
 	return c.getEscrowDuration("https://steamcommunity.com/tradeoffer/new/?" + netutil.ToURLValues(data).Encode())
 }
 
@@ -492,7 +496,7 @@ func (c *Client) GetOffersWithRetry(
 	getDescriptions bool,
 	activeOnly bool,
 	historicalOnly bool,
-	timeHistoricalCutoff *uint32,
+	timeHistoricalCutoff uint32,
 	retryCount int,
 	retryDelay time.Duration,
 ) (*MultiResult, error) {
@@ -527,9 +531,9 @@ func (c *Client) AcceptWithRetry(offerID uint64, retryCount int, retryDelay time
 
 func (c *Client) CreateWithRetry(
 	other steamid.SteamID,
-	accessToken *string,
+	accessToken string,
 	myItems, theirItems []TradeItem,
-	counteredOfferID *uint64,
+	counteredOfferID uint64,
 	message string,
 	retryCount int,
 	retryDelay time.Duration,
@@ -562,7 +566,7 @@ func (c *Client) GetPartnerInventoryWithRetry(
 	other steamid.SteamID,
 	contextID uint64,
 	appID uint32,
-	offerID *uint64,
+	offerID uint64,
 	retryCount int,
 	retryDelay time.Duration,
 ) (*inventory.Inventory, error) {
