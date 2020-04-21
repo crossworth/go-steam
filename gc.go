@@ -6,7 +6,7 @@ import (
 	pb "github.com/13k/go-steam-resources/protobuf/steam"
 	"github.com/13k/go-steam-resources/steamlang"
 	"github.com/13k/go-steam/protocol"
-	gc "github.com/13k/go-steam/protocol/gamecoordinator"
+	"github.com/13k/go-steam/protocol/gc"
 	"google.golang.org/protobuf/proto"
 )
 

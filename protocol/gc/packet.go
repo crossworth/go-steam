@@ -1,4 +1,4 @@
-package gamecoordinator
+package gc
 
 import (
 	"bytes"

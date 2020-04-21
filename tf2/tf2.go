@@ -6,7 +6,7 @@ package tf2
 import (
 	"github.com/13k/go-steam"
 	pbtf2 "github.com/13k/go-steam-resources/protobuf/tf2"
-	gc "github.com/13k/go-steam/protocol/gamecoordinator"
+	"github.com/13k/go-steam/protocol/gc"
 	"github.com/13k/go-steam/tf2/protocol"
 )
 
