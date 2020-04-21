@@ -3,7 +3,7 @@ package inventory
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
+	"fmt"
 	"net/http"
 )
 
@@ -45,58 +45,49 @@ func PerformRequest(client *http.Client, req *http.Request) (*PartialInventory, 
 	return inv, nil
 }
 
-// TODO: use only one iterator function and indicate the first page with start = 0
-// type PartialInventoryFetcher func(start uint) (*PartialInventory, error)
+type PartialInventoryFetcher func(start uint) (*PartialInventory, error)
 
-func GetFullInventory(
-	getFirst func() (*PartialInventory, error),
-	getNext func(start uint) (*PartialInventory, error),
-) (*Inventory, error) {
-	first, err := getFirst()
-	if err != nil {
-		return nil, err
-	}
-	if !first.Success {
-		return nil, errors.New("GetFullInventory API call failed: " + first.Error)
-	}
+func GetFullInventory(fetch PartialInventoryFetcher) (*Inventory, error) {
+	result := NewInventory()
+	start := uint(0)
 
-	result := &first.Inventory
-	var next *PartialInventory
-	for latest := first; latest.More; latest = next {
-		next, err := getNext(uint(latest.MoreStart))
+	for {
+		partial, err := fetch(start)
+
 		if err != nil {
 			return nil, err
 		}
-		if !next.Success {
-			return nil, errors.New("GetFullInventory API call failed: " + next.Error)
+
+		if !partial.Success {
+			return nil, fmt.Errorf("GetFullInventory API call failed: %s", partial.Error)
 		}
 
-		result = Merge(result, &next.Inventory)
+		result = Merge(result, &partial.Inventory)
+		start = uint(partial.MoreStart)
+
+		if !partial.More {
+			break
+		}
 	}
 
 	return result, nil
 }
 
-// Merges the given Inventory into a single Inventory.
-// The given slice must have at least one element. The first element of the slice is used
-// and modified.
-func Merge(p ...*Inventory) *Inventory {
-	inv := p[0]
-	for idx, i := range p {
-		if idx == 0 {
-			continue
+// Merge merges the given srcs into dst.
+func Merge(dst *Inventory, srcs ...*Inventory) *Inventory {
+	for _, i := range srcs {
+		for key, value := range i.Items {
+			dst.Items[key] = value
 		}
 
-		for key, value := range i.Items {
-			inv.Items[key] = value
-		}
 		for key, value := range i.Descriptions {
-			inv.Descriptions[key] = value
+			dst.Descriptions[key] = value
 		}
+
 		for key, value := range i.Currencies {
-			inv.Currencies[key] = value
+			dst.Currencies[key] = value
 		}
 	}
 
-	return inv
+	return dst
 }

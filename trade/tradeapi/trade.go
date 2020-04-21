@@ -1,6 +1,4 @@
-/*
-Wrapper around the HTTP trading API for type safety 'n' stuff.
-*/
+// Package tradeapi implements a trading API client.
 package tradeapi
 
 import (

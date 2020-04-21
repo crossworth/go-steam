@@ -365,9 +365,7 @@ func (c *Client) GetPartnerInventory(
 	appID uint32,
 	offerID uint64,
 ) (*inventory.Inventory, error) {
-	return inventory.GetFullInventory(func() (*inventory.PartialInventory, error) {
-		return c.getPartialPartnerInventory(other, contextID, appID, offerID, 0)
-	}, func(start uint) (*inventory.PartialInventory, error) {
+	return inventory.GetFullInventory(func(start uint) (*inventory.PartialInventory, error) {
 		return c.getPartialPartnerInventory(other, contextID, appID, offerID, start)
 	})
 }

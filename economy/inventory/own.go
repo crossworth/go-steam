@@ -28,9 +28,7 @@ func GetOwnPartialInventory(
 }
 
 func GetOwnInventory(client *http.Client, contextID uint64, appID uint32) (*Inventory, error) {
-	return GetFullInventory(func() (*PartialInventory, error) {
-		return GetOwnPartialInventory(client, contextID, appID, 0)
-	}, func(start uint) (*PartialInventory, error) {
+	return GetFullInventory(func(start uint) (*PartialInventory, error) {
 		return GetOwnPartialInventory(client, contextID, appID, start)
 	})
 }

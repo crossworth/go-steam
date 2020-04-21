@@ -40,9 +40,7 @@ func (t *Trade) Poll() ([]interface{}, error) {
 }
 
 func (t *Trade) GetTheirInventory(contextID uint64, appID uint32) (*inventory.Inventory, error) {
-	return inventory.GetFullInventory(func() (*inventory.PartialInventory, error) {
-		return t.api.GetForeignInventory(contextID, appID, 0)
-	}, func(start uint) (*inventory.PartialInventory, error) {
+	return inventory.GetFullInventory(func(start uint) (*inventory.PartialInventory, error) {
 		return t.api.GetForeignInventory(contextID, appID, start)
 	})
 }

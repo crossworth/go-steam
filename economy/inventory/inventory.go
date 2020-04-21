@@ -54,6 +54,14 @@ type Inventory struct {
 	AppInfo      *AppInfo     `json:"rgAppInfo"`
 }
 
+func NewInventory() *Inventory {
+	return &Inventory{
+		Items:        make(Items),
+		Currencies:   make(Currencies),
+		Descriptions: make(Descriptions),
+	}
+}
+
 // Items key is an AssetID
 type Items map[string]*Item
 
