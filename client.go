@@ -51,7 +51,7 @@ type Client struct {
 
 	mutex     sync.RWMutex // guarding conn and writeChan
 	conn      connection
-	writeChan chan protocol.IMsg
+	writeChan chan protocol.Message
 	writeBuf  *bytes.Buffer
 	heartbeat *time.Ticker
 }
@@ -192,7 +192,7 @@ func (c *Client) ConnectToBind(addr *netutil.PortAddr, local *net.TCPAddr) error
 	}
 
 	c.conn = conn
-	c.writeChan = make(chan protocol.IMsg, 5)
+	c.writeChan = make(chan protocol.Message, 5)
 
 	go c.readLoop()
 	go c.writeLoop()
@@ -225,8 +225,8 @@ func (c *Client) Disconnect() {
 // Modifications to the given message after writing are not allowed (possible race conditions).
 //
 // Writes to this client when not connected are ignored.
-func (c *Client) Write(msg protocol.IMsg) {
-	if cm, ok := msg.(protocol.IClientMsg); ok {
+func (c *Client) Write(msg protocol.Message) {
+	if cm, ok := msg.(protocol.ClientMessage); ok {
 		cm.SetSessionID(c.SessionID())
 		cm.SetSteamID(c.SteamID())
 	}
@@ -305,7 +305,7 @@ func (c *Client) heartbeatLoop(seconds time.Duration) {
 		if !ok {
 			break
 		}
-		c.Write(protocol.NewClientMsgProtobuf(steamlang.EMsg_ClientHeartBeat, &pb.CMsgClientHeartBeat{}))
+		c.Write(protocol.NewClientProtoMessage(steamlang.EMsg_ClientHeartBeat, &pb.CMsgClientHeartBeat{}))
 	}
 	c.heartbeat = nil
 }
@@ -331,7 +331,11 @@ func (c *Client) handlePacket(packet *protocol.Packet) {
 
 func (c *Client) handleChannelEncryptRequest(packet *protocol.Packet) {
 	body := steamlang.NewMsgChannelEncryptRequest()
-	packet.ReadMsg(body)
+
+	if _, err := packet.ReadMsg(body); err != nil {
+		c.Fatalf("error reading message: %v", err)
+		return
+	}
 
 	if body.Universe != steamlang.EUniverse_Public {
 		c.Fatalf("Invalid universe %v", body.Universe)
@@ -365,12 +369,16 @@ func (c *Client) handleChannelEncryptRequest(packet *protocol.Packet) {
 	payload.WriteByte(0)
 	payload.WriteByte(0)
 
-	c.Write(protocol.NewMsg(steamlang.NewMsgChannelEncryptResponse(), payload.Bytes()))
+	c.Write(protocol.NewStructMessage(steamlang.NewMsgChannelEncryptResponse(), payload.Bytes()))
 }
 
 func (c *Client) handleChannelEncryptResult(packet *protocol.Packet) {
 	body := steamlang.NewMsgChannelEncryptResult()
-	packet.ReadMsg(body)
+
+	if _, err := packet.ReadMsg(body); err != nil {
+		c.Fatalf("error reading message: %v", err)
+		return
+	}
 
 	if body.Result != steamlang.EResult_OK {
 		c.Fatalf("encryption failed: %v", body.Result)
@@ -389,7 +397,11 @@ func (c *Client) handleChannelEncryptResult(packet *protocol.Packet) {
 
 func (c *Client) handleMulti(packet *protocol.Packet) {
 	body := &pb.CMsgMulti{}
-	packet.ReadProtoMsg(body)
+
+	if _, err := packet.ReadProtoMsg(body); err != nil {
+		c.Errorf("error reading message: %v", err)
+		return
+	}
 
 	payload := body.GetMessageBody()
 
@@ -439,7 +451,11 @@ func (c *Client) handleMulti(packet *protocol.Packet) {
 
 func (c *Client) handleClientCMList(packet *protocol.Packet) {
 	body := &pb.CMsgClientCMList{}
-	packet.ReadProtoMsg(body)
+
+	if _, err := packet.ReadProtoMsg(body); err != nil {
+		c.Errorf("error reading message: %v", err)
+		return
+	}
 
 	l := make([]*netutil.PortAddr, len(body.GetCmAddresses()))
 

@@ -25,16 +25,18 @@ type Client struct {
 	sessionID string
 }
 
-func NewClient(key APIKey, sessionID, steamLogin, steamLoginSecure string) *Client {
+func NewClient(key APIKey, sessionID, steamLogin, steamLoginSecure string) (*Client, error) {
 	c := &Client{
 		client:    &http.Client{},
 		key:       key,
 		sessionID: sessionID,
 	}
 
-	community.SetCookies(c.client, sessionID, steamLogin, steamLoginSecure)
+	if err := community.SetCookies(c.client, sessionID, steamLogin, steamLoginSecure); err != nil {
+		return nil, err
+	}
 
-	return c
+	return c, nil
 }
 
 func (c *Client) GetOffer(offerID uint64) (*Result, error) {

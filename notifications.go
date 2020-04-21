@@ -36,7 +36,10 @@ const (
 func (n *Notifications) handleClientUserNotifications(packet *protocol.Packet) {
 	msg := &pb.CMsgClientUserNotifications{}
 
-	packet.ReadProtoMsg(msg)
+	if _, err := packet.ReadProtoMsg(msg); err != nil {
+		n.client.Errorf("error reading message: %v", err)
+		return
+	}
 
 	for _, notification := range msg.GetNotifications() {
 		typ := NotificationType(*notification.UserNotificationType)

@@ -10,7 +10,7 @@ import (
 )
 
 // An incoming, partially unread message from the Game Coordinator.
-type GCPacket struct {
+type Packet struct {
 	AppID       uint32
 	MsgType     uint32
 	IsProto     bool
@@ -19,8 +19,8 @@ type GCPacket struct {
 	TargetJobID protocol.JobID
 }
 
-func NewGCPacket(wrapper *pb.CMsgGCClient) (*GCPacket, error) {
-	packet := &GCPacket{
+func NewPacket(wrapper *pb.CMsgGCClient) (*Packet, error) {
+	packet := &Packet{
 		AppID:   wrapper.GetAppid(),
 		MsgType: wrapper.GetMsgtype(),
 		GCName:  wrapper.GetGcname(),
@@ -61,10 +61,10 @@ func NewGCPacket(wrapper *pb.CMsgGCClient) (*GCPacket, error) {
 	return packet, nil
 }
 
-func (g *GCPacket) ReadProtoMsg(body proto.Message) {
-	proto.Unmarshal(g.Body, body)
+func (g *Packet) ReadProtoMsg(body proto.Message) error {
+	return proto.Unmarshal(g.Body, body)
 }
 
-func (g *GCPacket) ReadMsg(body protocol.MessageBody) {
-	body.Deserialize(bytes.NewReader(g.Body))
+func (g *Packet) ReadMsg(body protocol.MessageBody) error {
+	return body.Deserialize(bytes.NewReader(g.Body))
 }

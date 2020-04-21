@@ -88,7 +88,7 @@ func (a *Auth) LogOn(details *LogOnDetails) error {
 		steamid.DesktopInstance,
 	))
 
-	a.client.Write(protocol.NewClientMsgProtobuf(steamlang.EMsg_ClientLogon, logon))
+	a.client.Write(protocol.NewClientProtoMessage(steamlang.EMsg_ClientLogon, logon))
 
 	return nil
 }
@@ -115,7 +115,12 @@ func (a *Auth) handleLogOnResponse(packet *protocol.Packet) {
 	}
 
 	body := &pb.CMsgClientLogonResponse{}
-	msg := packet.ReadProtoMsg(body)
+	msg, err := packet.ReadProtoMsg(body)
+
+	if err != nil {
+		a.client.Fatalf("error reading protobuf message: %v", err)
+		return
+	}
 
 	switch result := steamlang.EResult(body.GetEresult()); result {
 	case steamlang.EResult_OK:
@@ -143,13 +148,17 @@ func (a *Auth) handleLogOnResponse(packet *protocol.Packet) {
 
 func (a *Auth) handleLoginKey(packet *protocol.Packet) {
 	body := &pb.CMsgClientNewLoginKey{}
-	packet.ReadProtoMsg(body)
+
+	if _, err := packet.ReadProtoMsg(body); err != nil {
+		a.client.Errorf("error reading message: %v", err)
+		return
+	}
 
 	pbAccepted := &pb.CMsgClientNewLoginKeyAccepted{
 		UniqueId: proto.Uint32(body.GetUniqueId()),
 	}
 
-	a.client.Write(protocol.NewClientMsgProtobuf(steamlang.EMsg_ClientNewLoginKeyAccepted, pbAccepted))
+	a.client.Write(protocol.NewClientProtoMessage(steamlang.EMsg_ClientNewLoginKeyAccepted, pbAccepted))
 
 	a.client.Emit(&LoginKeyEvent{
 		UniqueID: body.GetUniqueId(),
@@ -162,11 +171,21 @@ func (a *Auth) handleLoggedOff(packet *protocol.Packet) {
 
 	if packet.IsProto {
 		body := &pb.CMsgClientLoggedOff{}
-		packet.ReadProtoMsg(body)
+
+		if _, err := packet.ReadProtoMsg(body); err != nil {
+			a.client.Errorf("error reading message: %v", err)
+			return
+		}
+
 		result = steamlang.EResult(body.GetEresult())
 	} else {
 		body := &steamlang.MsgClientLoggedOff{}
-		packet.ReadClientMsg(body)
+
+		if _, err := packet.ReadClientMsg(body); err != nil {
+			a.client.Errorf("error reading message: %v", err)
+			return
+		}
+
 		result = body.Result
 	}
 
@@ -176,7 +195,10 @@ func (a *Auth) handleLoggedOff(packet *protocol.Packet) {
 func (a *Auth) handleUpdateMachineAuth(packet *protocol.Packet) {
 	body := &pb.CMsgClientUpdateMachineAuth{}
 
-	packet.ReadProtoMsg(body)
+	if _, err := packet.ReadProtoMsg(body); err != nil {
+		a.client.Errorf("error reading message: %v", err)
+		return
+	}
 
 	hash := sha1.New()
 
@@ -191,7 +213,7 @@ func (a *Auth) handleUpdateMachineAuth(packet *protocol.Packet) {
 		ShaFile: sha,
 	}
 
-	msg := protocol.NewClientMsgProtobuf(steamlang.EMsg_ClientUpdateMachineAuthResponse, pbAuthRes)
+	msg := protocol.NewClientProtoMessage(steamlang.EMsg_ClientUpdateMachineAuthResponse, pbAuthRes)
 
 	msg.SetTargetJobID(packet.SourceJobID)
 
@@ -201,7 +223,12 @@ func (a *Auth) handleUpdateMachineAuth(packet *protocol.Packet) {
 
 func (a *Auth) handleAccountInfo(packet *protocol.Packet) {
 	body := &pb.CMsgClientAccountInfo{}
-	packet.ReadProtoMsg(body)
+
+	if _, err := packet.ReadProtoMsg(body); err != nil {
+		a.client.Errorf("error reading message: %v", err)
+		return
+	}
+
 	a.client.Emit(&AccountInfoEvent{
 		PersonaName:          body.GetPersonaName(),
 		Country:              body.GetIpCountry(),

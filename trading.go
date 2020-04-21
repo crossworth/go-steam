@@ -8,6 +8,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+type TradeRequestID uint32
+
 // Trading provides access to the Steam client's part of Steam Trading, that is bootstrapping the
 // trade.
 //
@@ -19,20 +21,28 @@ type Trading struct {
 	client *Client
 }
 
-type TradeRequestID uint32
-
 func (t *Trading) HandlePacket(packet *protocol.Packet) {
 	switch packet.EMsg {
 	case steamlang.EMsg_EconTrading_InitiateTradeProposed:
 		msg := &pb.CMsgTrading_InitiateTradeRequest{}
-		packet.ReadProtoMsg(msg)
+
+		if _, err := packet.ReadProtoMsg(msg); err != nil {
+			t.client.Errorf("error reading message: %v", err)
+			return
+		}
+
 		t.client.Emit(&TradeProposedEvent{
 			RequestID: TradeRequestID(msg.GetTradeRequestId()),
 			Other:     steamid.SteamID(msg.GetOtherSteamid()),
 		})
 	case steamlang.EMsg_EconTrading_InitiateTradeResult:
 		msg := &pb.CMsgTrading_InitiateTradeResponse{}
-		packet.ReadProtoMsg(msg)
+
+		if _, err := packet.ReadProtoMsg(msg); err != nil {
+			t.client.Errorf("error reading message: %v", err)
+			return
+		}
+
 		t.client.Emit(&TradeResultEvent{
 			RequestID: TradeRequestID(msg.GetTradeRequestId()),
 			Response:  steamlang.EEconTradeResponse(msg.GetResponse()),
@@ -45,7 +55,12 @@ func (t *Trading) HandlePacket(packet *protocol.Packet) {
 		})
 	case steamlang.EMsg_EconTrading_StartSession:
 		msg := &pb.CMsgTrading_StartSession{}
-		packet.ReadProtoMsg(msg)
+
+		if _, err := packet.ReadProtoMsg(msg); err != nil {
+			t.client.Errorf("error reading message: %v", err)
+			return
+		}
+
 		t.client.Emit(&TradeSessionStartEvent{
 			Other: steamid.SteamID(msg.GetOtherSteamid()),
 		})
@@ -59,7 +74,9 @@ func (t *Trading) RequestTrade(other steamid.SteamID) {
 		OtherSteamid: proto.Uint64(uint64(other)),
 	}
 
-	t.client.Write(protocol.NewClientMsgProtobuf(steamlang.EMsg_EconTrading_InitiateTradeRequest, pbmsg))
+	msg := protocol.NewClientProtoMessage(steamlang.EMsg_EconTrading_InitiateTradeRequest, pbmsg)
+
+	t.client.Write(msg)
 }
 
 // Responds to a TradeProposedEvent.
@@ -75,7 +92,9 @@ func (t *Trading) RespondRequest(requestID TradeRequestID, accept bool) {
 		Response:       proto.Uint32(resp),
 	}
 
-	t.client.Write(protocol.NewClientMsgProtobuf(steamlang.EMsg_EconTrading_InitiateTradeResponse, pbmsg))
+	msg := protocol.NewClientProtoMessage(steamlang.EMsg_EconTrading_InitiateTradeResponse, pbmsg)
+
+	t.client.Write(msg)
 }
 
 // This cancels a request made with RequestTrade.
@@ -84,5 +103,7 @@ func (t *Trading) CancelRequest(other steamid.SteamID) {
 		OtherSteamid: proto.Uint64(uint64(other)),
 	}
 
-	t.client.Write(protocol.NewClientMsgProtobuf(steamlang.EMsg_EconTrading_CancelTradeRequest, pbmsg))
+	msg := protocol.NewClientProtoMessage(steamlang.EMsg_EconTrading_CancelTradeRequest, pbmsg)
+
+	t.client.Write(msg)
 }

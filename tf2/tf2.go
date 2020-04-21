@@ -33,33 +33,39 @@ func (t *TF2) SetPlaying(playing bool) {
 	}
 }
 
-func (t *TF2) SetItemPosition(itemID, position uint64) {
-	gcMsg := gc.NewGCMsg(AppID, uint32(pbtf2.EGCItemMsg_k_EMsgGCSetSingleItemPosition), &protocol.MsgGCSetItemPosition{
+func (t *TF2) SetItemPosition(itemID, position uint64) error {
+	msgType := uint32(pbtf2.EGCItemMsg_k_EMsgGCSetSingleItemPosition)
+	gcMsg := gc.NewStructMessage(AppID, msgType, &protocol.MsgGCSetItemPosition{
 		AssetID:  itemID,
 		Position: position,
 	})
 
-	t.client.GC.Write(gcMsg)
+	return t.client.GC.Write(gcMsg)
 }
 
 // recipe -2 = wildcard
-func (t *TF2) CraftItems(items []uint64, recipe int16) {
-	t.client.GC.Write(gc.NewGCMsg(AppID, uint32(pbtf2.EGCItemMsg_k_EMsgGCCraft), &protocol.MsgGCCraft{
+func (t *TF2) CraftItems(items []uint64, recipe int16) error {
+	msgType := uint32(pbtf2.EGCItemMsg_k_EMsgGCCraft)
+
+	return t.client.GC.Write(gc.NewStructMessage(AppID, msgType, &protocol.MsgGCCraft{
 		Recipe: recipe,
 		Items:  items,
 	}))
 }
 
-func (t *TF2) DeleteItem(itemID uint64) {
-	gcMsg := gc.NewGCMsg(AppID, uint32(pbtf2.EGCItemMsg_k_EMsgGCDelete), &protocol.MsgGCDeleteItem{
+func (t *TF2) DeleteItem(itemID uint64) error {
+	msgType := uint32(pbtf2.EGCItemMsg_k_EMsgGCDelete)
+	gcMsg := gc.NewStructMessage(AppID, msgType, &protocol.MsgGCDeleteItem{
 		ItemID: itemID,
 	})
 
-	t.client.GC.Write(gcMsg)
+	return t.client.GC.Write(gcMsg)
 }
 
-func (t *TF2) NameItem(toolID, target uint64, name string) {
-	t.client.GC.Write(gc.NewGCMsg(AppID, uint32(pbtf2.EGCItemMsg_k_EMsgGCNameItem), &protocol.MsgGCNameItem{
+func (t *TF2) NameItem(toolID, target uint64, name string) error {
+	msgType := uint32(pbtf2.EGCItemMsg_k_EMsgGCNameItem)
+
+	return t.client.GC.Write(gc.NewStructMessage(AppID, msgType, &protocol.MsgGCNameItem{
 		Tool:   toolID,
 		Target: target,
 		Name:   name,
@@ -68,17 +74,18 @@ func (t *TF2) NameItem(toolID, target uint64, name string) {
 
 type GCReadyEvent struct{}
 
-func (t *TF2) HandleGCPacket(packet *gc.GCPacket) {
+func (t *TF2) HandleGCPacket(packet *gc.Packet) {
 	if packet.AppID != AppID {
 		return
 	}
+
 	switch pbtf2.EGCBaseClientMsg(packet.MsgType) {
 	case pbtf2.EGCBaseClientMsg_k_EMsgGCClientWelcome:
 		t.handleWelcome(packet)
 	}
 }
 
-func (t *TF2) handleWelcome(_ *gc.GCPacket) {
+func (t *TF2) handleWelcome(_ *gc.Packet) {
 	// the packet's body is pretty useless
 	t.client.Emit(&GCReadyEvent{})
 }

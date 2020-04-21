@@ -19,17 +19,15 @@ import (
 
 // Social provides access to social aspects of Steam.
 type Social struct {
-	mutex sync.RWMutex
-
-	name         string
-	avatar       string
-	personaState steamlang.EPersonaState
-
 	Friends *socialcache.FriendsList
 	Groups  *socialcache.GroupsList
 	Chats   *socialcache.ChatsList
 
-	client *Client
+	client       *Client
+	mutex        sync.RWMutex
+	name         string
+	avatar       string
+	personaState steamlang.EPersonaState
 }
 
 func newSocial(client *Client) *Social {
@@ -59,8 +57,10 @@ func (s *Social) GetPersonaName() string {
 func (s *Social) SetPersonaName(name string) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+
 	s.name = name
-	s.client.Write(protocol.NewClientMsgProtobuf(steamlang.EMsg_ClientChangeStatus, &pb.CMsgClientChangeStatus{
+
+	s.client.Write(protocol.NewClientProtoMessage(steamlang.EMsg_ClientChangeStatus, &pb.CMsgClientChangeStatus{
 		PersonaState: proto.Uint32(uint32(s.personaState)),
 		PlayerName:   proto.String(name),
 	}))
@@ -78,7 +78,7 @@ func (s *Social) SetPersonaState(state steamlang.EPersonaState) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	s.personaState = state
-	s.client.Write(protocol.NewClientMsgProtobuf(steamlang.EMsg_ClientChangeStatus, &pb.CMsgClientChangeStatus{
+	s.client.Write(protocol.NewClientProtoMessage(steamlang.EMsg_ClientChangeStatus, &pb.CMsgClientChangeStatus{
 		PersonaState: proto.Uint32(uint32(state)),
 	}))
 }
@@ -87,14 +87,14 @@ func (s *Social) SetPersonaState(state steamlang.EPersonaState) {
 func (s *Social) SendMessage(to steamid.SteamID, entryType steamlang.EChatEntryType, message string) {
 	switch to.AccountType().Enum() {
 	case steamlang.EAccountType_Individual, steamlang.EAccountType_ConsoleUser: // Friend
-		s.client.Write(protocol.NewClientMsgProtobuf(steamlang.EMsg_ClientFriendMsg, &pb.CMsgClientFriendMsg{
+		s.client.Write(protocol.NewClientProtoMessage(steamlang.EMsg_ClientFriendMsg, &pb.CMsgClientFriendMsg{
 			Steamid:       proto.Uint64(to.Uint64()),
 			ChatEntryType: proto.Int32(int32(entryType)),
 			Message:       []byte(message),
 		}))
 	case steamlang.EAccountType_Clan, steamlang.EAccountType_Chat: // Chat room
 		chatID := to.ClanToChat()
-		s.client.Write(protocol.NewClientMsg(&steamlang.MsgClientChatMsg{
+		s.client.Write(protocol.NewClientStructMessage(&steamlang.MsgClientChatMsg{
 			ChatMsgType:     entryType,
 			SteamIdChatRoom: chatID.Uint64(),
 			SteamIdChatter:  s.client.SteamID().Uint64(),
@@ -105,25 +105,27 @@ func (s *Social) SendMessage(to steamid.SteamID, entryType steamlang.EChatEntryT
 // AddFriend adds a friend to your friends list or accepts a friend. You'll receive a
 // FriendStateEvent for every new/changed friend.
 func (s *Social) AddFriend(id steamid.SteamID) {
-	s.client.Write(protocol.NewClientMsgProtobuf(steamlang.EMsg_ClientAddFriend, &pb.CMsgClientAddFriend{
+	s.client.Write(protocol.NewClientProtoMessage(steamlang.EMsg_ClientAddFriend, &pb.CMsgClientAddFriend{
 		SteamidToAdd: proto.Uint64(id.Uint64()),
 	}))
 }
 
 // RemoveFriend removes a friend from your friends list
 func (s *Social) RemoveFriend(id steamid.SteamID) {
-	s.client.Write(protocol.NewClientMsgProtobuf(steamlang.EMsg_ClientRemoveFriend, &pb.CMsgClientRemoveFriend{
+	s.client.Write(protocol.NewClientProtoMessage(steamlang.EMsg_ClientRemoveFriend, &pb.CMsgClientRemoveFriend{
 		Friendid: proto.Uint64(id.Uint64()),
 	}))
 }
 
 // IgnoreFriend ignores or unignores a friend on Steam
 func (s *Social) IgnoreFriend(id steamid.SteamID, setIgnore bool) {
-	ignore := uint8(1) //True
-	if !setIgnore {
-		ignore = uint8(0) //False
+	var ignore uint8
+
+	if setIgnore {
+		ignore = 1
 	}
-	s.client.Write(protocol.NewClientMsg(&steamlang.MsgClientSetIgnoreFriend{
+
+	s.client.Write(protocol.NewClientStructMessage(&steamlang.MsgClientSetIgnoreFriend{
 		MySteamId:     s.client.SteamID().Uint64(),
 		SteamIdFriend: id.Uint64(),
 		Ignore:        ignore,
@@ -138,7 +140,7 @@ func (s *Social) RequestFriendListInfo(ids []steamid.SteamID, requestedInfo stea
 		friends[i] = id.Uint64()
 	}
 
-	s.client.Write(protocol.NewClientMsgProtobuf(steamlang.EMsg_ClientRequestFriendData, &pb.CMsgClientRequestFriendData{
+	s.client.Write(protocol.NewClientProtoMessage(steamlang.EMsg_ClientRequestFriendData, &pb.CMsgClientRequestFriendData{
 		PersonaStateRequested: proto.Uint32(uint32(requestedInfo)),
 		Friends:               friends,
 	}))
@@ -151,47 +153,51 @@ func (s *Social) RequestFriendInfo(id steamid.SteamID, requestedInfo steamlang.E
 
 // RequestProfileInfo requests profile information for a specified SteamID
 func (s *Social) RequestProfileInfo(id steamid.SteamID) {
-	s.client.Write(protocol.NewClientMsgProtobuf(steamlang.EMsg_ClientFriendProfileInfo, &pb.CMsgClientFriendProfileInfo{
+	s.client.Write(protocol.NewClientProtoMessage(steamlang.EMsg_ClientFriendProfileInfo, &pb.CMsgClientFriendProfileInfo{
 		SteamidFriend: proto.Uint64(id.Uint64()),
 	}))
 }
 
-// RequestOfflineMessages requests all offline messages and marks them as read
-/* TODO: Determine if this is possible to re-implement
-func (s *Social) RequestOfflineMessages() {
-	pbmsg := &CMsgClientFSGetFriendMessageHistoryForOfflineMessages{}
-	s.client.Write(NewClientMsgProtobuf(EMsg_ClientFSGetFriendMessageHistoryForOfflineMessages, pbmsg))
-}
-*/
-
 // JoinChat attempts to join a chat room
 func (s *Social) JoinChat(id steamid.SteamID) {
 	chatID := id.ClanToChat()
-	s.client.Write(protocol.NewClientMsg(&steamlang.MsgClientJoinChat{
+	s.client.Write(protocol.NewClientStructMessage(&steamlang.MsgClientJoinChat{
 		SteamIdChat: chatID.Uint64(),
 	}, make([]byte, 0)))
 }
 
 // LeaveChat attempts to leave a chat room
-// TODO: handle errors
-func (s *Social) LeaveChat(id steamid.SteamID) {
+func (s *Social) LeaveChat(id steamid.SteamID) error {
 	chatID := id.ClanToChat()
 	payload := &bytes.Buffer{}
 
-	_ = binary.Write(payload, binary.LittleEndian, s.client.SteamID().Uint64())                   // ChatterActedOn
-	_ = binary.Write(payload, binary.LittleEndian, uint32(steamlang.EChatMemberStateChange_Left)) // StateChange
-	_ = binary.Write(payload, binary.LittleEndian, s.client.SteamID().Uint64())                   // ChatterActedBy
+	// ChatterActedOn
+	if err := binary.Write(payload, binary.LittleEndian, s.client.SteamID().Uint64()); err != nil {
+		return err
+	}
 
-	s.client.Write(protocol.NewClientMsg(&steamlang.MsgClientChatMemberInfo{
+	// StateChange
+	if err := binary.Write(payload, binary.LittleEndian, uint32(steamlang.EChatMemberStateChange_Left)); err != nil {
+		return err
+	}
+
+	// ChatterActedBy
+	if err := binary.Write(payload, binary.LittleEndian, s.client.SteamID().Uint64()); err != nil {
+		return err
+	}
+
+	s.client.Write(protocol.NewClientStructMessage(&steamlang.MsgClientChatMemberInfo{
 		SteamIdChat: chatID.Uint64(),
 		Type:        steamlang.EChatInfoType_StateChange,
 	}, payload.Bytes()))
+
+	return nil
 }
 
 // KickChatMember the specified chat member from the given chat room
 func (s *Social) KickChatMember(room steamid.SteamID, user steamid.SteamID) {
 	chatID := room.ClanToChat()
-	s.client.Write(protocol.NewClientMsg(&steamlang.MsgClientChatAction{
+	s.client.Write(protocol.NewClientStructMessage(&steamlang.MsgClientChatAction{
 		SteamIdChat:        chatID.Uint64(),
 		SteamIdUserToActOn: user.Uint64(),
 		ChatAction:         steamlang.EChatAction_Kick,
@@ -201,7 +207,7 @@ func (s *Social) KickChatMember(room steamid.SteamID, user steamid.SteamID) {
 // BanChatMember the specified chat member from the given chat room
 func (s *Social) BanChatMember(room steamid.SteamID, user steamid.SteamID) {
 	chatID := room.ClanToChat()
-	s.client.Write(protocol.NewClientMsg(&steamlang.MsgClientChatAction{
+	s.client.Write(protocol.NewClientStructMessage(&steamlang.MsgClientChatAction{
 		SteamIdChat:        chatID.Uint64(),
 		SteamIdUserToActOn: user.Uint64(),
 		ChatAction:         steamlang.EChatAction_Ban,
@@ -211,7 +217,7 @@ func (s *Social) BanChatMember(room steamid.SteamID, user steamid.SteamID) {
 // UnbanChatMember the specified chat member from the given chat room
 func (s *Social) UnbanChatMember(room steamid.SteamID, user steamid.SteamID) {
 	chatID := room.ClanToChat()
-	s.client.Write(protocol.NewClientMsg(&steamlang.MsgClientChatAction{
+	s.client.Write(protocol.NewClientStructMessage(&steamlang.MsgClientChatAction{
 		SteamIdChat:        chatID.Uint64(),
 		SteamIdUserToActOn: user.Uint64(),
 		ChatAction:         steamlang.EChatAction_UnBan,
@@ -264,7 +270,10 @@ func (s *Social) handleAccountInfo(_ *protocol.Packet) {
 func (s *Social) handleFriendsList(packet *protocol.Packet) {
 	list := &pb.CMsgClientFriendsList{}
 
-	packet.ReadProtoMsg(list)
+	if _, err := packet.ReadProtoMsg(list); err != nil {
+		s.client.Errorf("social/FriendsList: error reading message: %v", err)
+		return
+	}
 
 	var friends []steamid.SteamID
 
@@ -317,7 +326,10 @@ func (s *Social) handleFriendsList(packet *protocol.Packet) {
 func (s *Social) handlePersonaState(packet *protocol.Packet) {
 	list := &pb.CMsgClientPersonaState{}
 
-	packet.ReadProtoMsg(list)
+	if _, err := packet.ReadProtoMsg(list); err != nil {
+		s.client.Errorf("social/PersonaState: error reading message: %v", err)
+		return
+	}
 
 	flags := steamlang.EClientPersonaStateFlag(list.GetStatusFlags())
 
@@ -402,7 +414,11 @@ func (s *Social) handlePersonaState(packet *protocol.Packet) {
 
 func (s *Social) handleClanState(packet *protocol.Packet) {
 	body := &pb.CMsgClientClanState{}
-	packet.ReadProtoMsg(body)
+
+	if _, err := packet.ReadProtoMsg(body); err != nil {
+		s.client.Errorf("social/ClanState: error reading message: %v", err)
+		return
+	}
 
 	var name, avatar string
 
@@ -487,7 +503,10 @@ func (s *Social) handleClanState(packet *protocol.Packet) {
 func (s *Social) handleFriendResponse(packet *protocol.Packet) {
 	body := &pb.CMsgClientAddFriendResponse{}
 
-	packet.ReadProtoMsg(body)
+	if _, err := packet.ReadProtoMsg(body); err != nil {
+		s.client.Errorf("social/Friend: error reading message: %v", err)
+		return
+	}
 
 	s.client.Emit(&FriendAddedEvent{
 		Result:      steamlang.EResult(body.GetEresult()),
@@ -499,7 +518,10 @@ func (s *Social) handleFriendResponse(packet *protocol.Packet) {
 func (s *Social) handleFriendMsg(packet *protocol.Packet) {
 	body := &pb.CMsgClientFriendMsgIncoming{}
 
-	packet.ReadProtoMsg(body)
+	if _, err := packet.ReadProtoMsg(body); err != nil {
+		s.client.Errorf("social/FriendMsg: error reading message: %v", err)
+		return
+	}
 
 	message := string(bytes.Split(body.GetMessage(), []byte{0x0})[0])
 
@@ -513,7 +535,14 @@ func (s *Social) handleFriendMsg(packet *protocol.Packet) {
 
 func (s *Social) handleChatMsg(packet *protocol.Packet) {
 	body := &steamlang.MsgClientChatMsg{}
-	payload := packet.ReadClientMsg(body).Payload
+	msg, err := packet.ReadClientMsg(body)
+
+	if err != nil {
+		s.client.Errorf("social/ChatMsg: error reading message: %v", err)
+		return
+	}
+
+	payload := msg.Payload
 	message := string(bytes.Split(payload, []byte{0x0})[0])
 
 	s.client.Emit(&ChatMsgEvent{
@@ -526,10 +555,28 @@ func (s *Social) handleChatMsg(packet *protocol.Packet) {
 
 func (s *Social) handleChatEnter(packet *protocol.Packet) {
 	body := &steamlang.MsgClientChatEnter{}
-	payload := packet.ReadClientMsg(body).Payload
+	msg, err := packet.ReadClientMsg(body)
+
+	if err != nil {
+		s.client.Errorf("social/ChatEnter: error reading message: %v", err)
+		return
+	}
+
+	payload := msg.Payload
 	reader := bytes.NewBuffer(payload)
-	name, _ := rwu.ReadString(reader)
-	_, _ = rwu.ReadByte(reader) //0
+	name, err := rwu.ReadString(reader)
+
+	if err != nil {
+		s.client.Errorf("social/ChatEnter: error reading message: %v", err)
+		return
+	}
+
+	// 0
+	if _, err = rwu.ReadByte(reader); err != nil {
+		s.client.Errorf("social/ChatEnter: error reading message: %v", err)
+		return
+	}
+
 	count := body.NumMembers
 	chatID := steamid.SteamID(body.SteamIdChat)
 	clanID := steamid.SteamID(body.SteamIdClan)
@@ -537,8 +584,18 @@ func (s *Social) handleChatEnter(packet *protocol.Packet) {
 	s.Chats.Add(socialcache.Chat{SteamID: chatID, GroupID: clanID})
 
 	for i := 0; i < int(count); i++ {
-		id, chatPerm, clanPerm := readChatMember(reader)
-		_, _ = rwu.ReadBytes(reader, 6) //No idea what this is
+		id, chatPerm, clanPerm, err := readChatMember(reader)
+
+		if err != nil {
+			s.client.Errorf("social/ChatEnter: error reading message: %v", err)
+			return
+		}
+
+		// unknown data
+		if _, err = rwu.ReadBytes(reader, 6); err != nil {
+			s.client.Errorf("social/ChatEnter: error reading message: %v", err)
+			return
+		}
 
 		s.Chats.AddChatMember(chatID, socialcache.ChatMember{
 			SteamID:         id,
@@ -561,20 +618,55 @@ func (s *Social) handleChatEnter(packet *protocol.Packet) {
 
 func (s *Social) handleChatMemberInfo(packet *protocol.Packet) {
 	body := &steamlang.MsgClientChatMemberInfo{}
-	payload := packet.ReadClientMsg(body).Payload
+	msg, err := packet.ReadClientMsg(body)
+
+	if err != nil {
+		s.client.Errorf("social/ChatMemberInfo: error reading message: %v", err)
+		return
+	}
+
+	payload := msg.Payload
 	reader := bytes.NewBuffer(payload)
 	chatID := steamid.SteamID(body.SteamIdChat)
 
 	if body.Type == steamlang.EChatInfoType_StateChange {
-		actedOn, _ := rwu.ReadUint64(reader)
-		state, _ := rwu.ReadInt32(reader)
-		actedBy, _ := rwu.ReadUint64(reader)
-		_, _ = rwu.ReadByte(reader) // 0
+		actedOn, err := rwu.ReadUint64(reader)
+
+		if err != nil {
+			s.client.Errorf("social/ChatMemberInfo: error reading message: %v", err)
+			return
+		}
+
+		state, err := rwu.ReadInt32(reader)
+
+		if err != nil {
+			s.client.Errorf("social/ChatMemberInfo: error reading message: %v", err)
+			return
+		}
+
+		actedBy, err := rwu.ReadUint64(reader)
+
+		if err != nil {
+			s.client.Errorf("social/ChatMemberInfo: error reading message: %v", err)
+			return
+		}
+
+		// 0
+		if _, err = rwu.ReadByte(reader); err != nil {
+			s.client.Errorf("social/ChatMemberInfo: error reading message: %v", err)
+			return
+		}
+
 		stateChange := steamlang.EChatMemberStateChange(state)
 
 		switch stateChange {
 		case steamlang.EChatMemberStateChange_Entered:
-			_, chatPerm, clanPerm := readChatMember(reader)
+			_, chatPerm, clanPerm, err := readChatMember(reader)
+
+			if err != nil {
+				s.client.Errorf("social/ChatMemberInfo: error reading message: %v", err)
+				return
+			}
 
 			s.Chats.AddChatMember(chatID, socialcache.ChatMember{
 				SteamID:         steamid.SteamID(actedOn),
@@ -602,26 +694,13 @@ func (s *Social) handleChatMemberInfo(packet *protocol.Packet) {
 	}
 }
 
-// TODO: handle errors
-func readChatMember(r io.Reader) (steamid.SteamID, steamlang.EChatPermission, steamlang.EClanPermission) {
-	_, _ = rwu.ReadString(r) // MessageObject
-	_, _ = rwu.ReadByte(r)   // 7
-	_, _ = rwu.ReadString(r) //steamid
-	id, _ := rwu.ReadUint64(r)
-	_, _ = rwu.ReadByte(r)   // 2
-	_, _ = rwu.ReadString(r) //Permissions
-	chat, _ := rwu.ReadInt32(r)
-	_, _ = rwu.ReadByte(r)   // 2
-	_, _ = rwu.ReadString(r) //Details
-	clan, _ := rwu.ReadInt32(r)
-
-	return steamid.SteamID(id), steamlang.EChatPermission(chat), steamlang.EClanPermission(clan)
-}
-
 func (s *Social) handleChatActionResult(packet *protocol.Packet) {
 	body := &steamlang.MsgClientChatActionResult{}
 
-	packet.ReadClientMsg(body)
+	if _, err := packet.ReadClientMsg(body); err != nil {
+		s.client.Errorf("social/ChatActionResult: error reading message: %v", err)
+		return
+	}
 
 	s.client.Emit(&ChatActionResultEvent{
 		ChatRoomID: steamid.SteamID(body.SteamIdChat),
@@ -634,7 +713,10 @@ func (s *Social) handleChatActionResult(packet *protocol.Packet) {
 func (s *Social) handleChatInvite(packet *protocol.Packet) {
 	body := &pb.CMsgClientChatInvite{}
 
-	packet.ReadProtoMsg(body)
+	if _, err := packet.ReadProtoMsg(body); err != nil {
+		s.client.Errorf("social/ChatInvite: error reading message: %v", err)
+		return
+	}
 
 	s.client.Emit(&ChatInviteEvent{
 		InvitedID:    steamid.SteamID(body.GetSteamIdInvited()),
@@ -650,7 +732,10 @@ func (s *Social) handleChatInvite(packet *protocol.Packet) {
 func (s *Social) handleIgnoreFriendResponse(packet *protocol.Packet) {
 	body := &steamlang.MsgClientSetIgnoreFriendResponse{}
 
-	packet.ReadClientMsg(body)
+	if _, err := packet.ReadClientMsg(body); err != nil {
+		s.client.Errorf("social/IgnoreFriend: error reading message: %v", err)
+		return
+	}
 
 	s.client.Emit(&IgnoreFriendEvent{
 		Result: body.Result,
@@ -660,7 +745,10 @@ func (s *Social) handleIgnoreFriendResponse(packet *protocol.Packet) {
 func (s *Social) handleProfileInfoResponse(packet *protocol.Packet) {
 	body := &pb.CMsgClientFriendProfileInfoResponse{}
 
-	packet.ReadProtoMsg(body)
+	if _, err := packet.ReadProtoMsg(body); err != nil {
+		s.client.Errorf("social/ProfileInfo: error reading message: %v", err)
+		return
+	}
 
 	s.client.Emit(&ProfileInfoEvent{
 		Result:      steamlang.EResult(body.GetEresult()),
@@ -673,4 +761,67 @@ func (s *Social) handleProfileInfoResponse(packet *protocol.Packet) {
 		Headline:    body.GetHeadline(),
 		Summary:     body.GetSummary(),
 	})
+}
+
+func readChatMember(r io.Reader) (steamid.SteamID, steamlang.EChatPermission, steamlang.EClanPermission, error) {
+	var (
+		id         uint64
+		chat, clan int32
+		err        error
+	)
+
+	// MessageObject
+	if _, err = rwu.ReadString(r); err != nil {
+		return 0, 0, 0, err
+	}
+
+	// 7
+	if _, err = rwu.ReadByte(r); err != nil {
+		return 0, 0, 0, err
+	}
+
+	// steamid
+	if _, err = rwu.ReadString(r); err != nil {
+		return 0, 0, 0, err
+	}
+
+	id, err = rwu.ReadUint64(r)
+
+	if err != nil {
+		return 0, 0, 0, err
+	}
+
+	// 2
+	if _, err = rwu.ReadByte(r); err != nil {
+		return 0, 0, 0, err
+	}
+
+	// Permissions
+	if _, err = rwu.ReadString(r); err != nil {
+		return 0, 0, 0, err
+	}
+
+	chat, err = rwu.ReadInt32(r)
+
+	if err != nil {
+		return 0, 0, 0, err
+	}
+
+	// 2
+	if _, err = rwu.ReadByte(r); err != nil {
+		return 0, 0, 0, err
+	}
+
+	// Details
+	if _, err = rwu.ReadString(r); err != nil {
+		return 0, 0, 0, err
+	}
+
+	clan, err = rwu.ReadInt32(r)
+
+	if err != nil {
+		return 0, 0, 0, err
+	}
+
+	return steamid.SteamID(id), steamlang.EChatPermission(chat), steamlang.EClanPermission(clan), nil
 }

@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -35,8 +36,7 @@ type Web struct {
 	SteamLoginSecure string
 
 	webLoginKey string
-
-	client *Client
+	client      *Client
 }
 
 func (w *Web) HandlePacket(packet *protocol.Packet) {
@@ -116,14 +116,19 @@ func (w *Web) apiLogOn() error {
 
 	defer resp.Body.Close()
 
-	if resp.StatusCode == 401 {
-		// our web login key has expired, request a new one
+	if resp.StatusCode == 401 { // our web login key has expired, request a new one
 		atomic.StoreUint32(&w.relogOnNonce, 1)
-		msg := &pb.CMsgClientRequestWebAPIAuthenticateUserNonce{}
-		w.client.Write(protocol.NewClientMsgProtobuf(steamlang.EMsg_ClientRequestWebAPIAuthenticateUserNonce, msg))
+
+		pbmsg := &pb.CMsgClientRequestWebAPIAuthenticateUserNonce{}
+		msg := protocol.NewClientProtoMessage(steamlang.EMsg_ClientRequestWebAPIAuthenticateUserNonce, pbmsg)
+
+		w.client.Write(msg)
+
 		return nil
-	} else if resp.StatusCode != 200 {
-		return errors.New("steam.Web.apiLogOn: request failed with status " + resp.Status)
+	}
+
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("web: request failed with status %s", resp.Status)
 	}
 
 	result := &struct {
@@ -147,13 +152,17 @@ func (w *Web) apiLogOn() error {
 
 func (w *Web) handleNewLoginKey(packet *protocol.Packet) {
 	msg := &pb.CMsgClientNewLoginKey{}
-	packet.ReadProtoMsg(msg)
+
+	if _, err := packet.ReadProtoMsg(msg); err != nil {
+		w.client.Errorf("web: error reading message: %v", err)
+		return
+	}
 
 	acceptMsg := &pb.CMsgClientNewLoginKeyAccepted{
 		UniqueId: proto.Uint32(msg.GetUniqueId()),
 	}
 
-	w.client.Write(protocol.NewClientMsgProtobuf(steamlang.EMsg_ClientNewLoginKeyAccepted, acceptMsg))
+	w.client.Write(protocol.NewClientProtoMessage(steamlang.EMsg_ClientNewLoginKeyAccepted, acceptMsg))
 
 	// number -> string -> bytes -> base64
 	uniqueIDStr := strconv.FormatUint(uint64(msg.GetUniqueId()), 10)
@@ -165,12 +174,19 @@ func (w *Web) handleNewLoginKey(packet *protocol.Packet) {
 func (w *Web) handleAuthNonceResponse(packet *protocol.Packet) {
 	// this has to be the best name for a message yet.
 	msg := &pb.CMsgClientRequestWebAPIAuthenticateUserNonceResponse{}
-	packet.ReadProtoMsg(msg)
+
+	if _, err := packet.ReadProtoMsg(msg); err != nil {
+		w.client.Errorf("web: error reading message: %v", err)
+		return
+	}
+
 	w.webLoginKey = msg.GetWebapiAuthenticateUserNonce()
 
-	// if the nonce was specifically requested in apiLogOn(),
-	// don't emit an event.
+	// if the nonce was specifically requested in apiLogOn(), don't emit an event.
 	if atomic.CompareAndSwapUint32(&w.relogOnNonce, 1, 0) {
-		w.LogOn()
+		if err := w.LogOn(); err != nil {
+			w.client.Errorf("web: error logging on: %v", err)
+			return
+		}
 	}
 }

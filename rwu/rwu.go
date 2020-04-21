@@ -1,4 +1,4 @@
-// Utilities for reading and writing of binary data
+// Package rwu provides utilities for reading and writing binary data.
 package rwu
 
 import (

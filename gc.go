@@ -12,21 +12,19 @@ import (
 
 type GameCoordinator struct {
 	client   *Client
-	handlers []GCPacketHandler
+	handlers []gc.PacketHandler
 }
+
+var _ PacketHandler = (*GameCoordinator)(nil)
 
 func newGC(client *Client) *GameCoordinator {
 	return &GameCoordinator{
 		client:   client,
-		handlers: make([]GCPacketHandler, 0),
+		handlers: make([]gc.PacketHandler, 0),
 	}
 }
 
-type GCPacketHandler interface {
-	HandleGCPacket(*gc.GCPacket)
-}
-
-func (g *GameCoordinator) RegisterPacketHandler(handler GCPacketHandler) {
+func (g *GameCoordinator) RegisterPacketHandler(handler gc.PacketHandler) {
 	g.handlers = append(g.handlers, handler)
 }
 
@@ -37,12 +35,15 @@ func (g *GameCoordinator) HandlePacket(packet *protocol.Packet) {
 
 	msg := &pb.CMsgGCClient{}
 
-	packet.ReadProtoMsg(msg)
+	if _, err := packet.ReadProtoMsg(msg); err != nil {
+		g.client.Errorf("error reading message: %v", err)
+		return
+	}
 
-	p, err := gc.NewGCPacket(msg)
+	p, err := gc.NewPacket(msg)
 
 	if err != nil {
-		g.client.Errorf("Error reading GC message: %v", err)
+		g.client.Errorf("error reading GC message: %v", err)
 		return
 	}
 
@@ -51,22 +52,26 @@ func (g *GameCoordinator) HandlePacket(packet *protocol.Packet) {
 	}
 }
 
-func (g *GameCoordinator) Write(msg gc.IGCMsg) {
+func (g *GameCoordinator) Write(msg gc.Message) error {
 	buf := &bytes.Buffer{}
 
-	msg.Serialize(buf)
+	if err := msg.Serialize(buf); err != nil {
+		return err
+	}
 
 	msgType := msg.GetMsgType()
 
 	if msg.IsProto() {
-		msgType = msgType | 0x80000000 // mask with protoMask
+		msgType = msgType | steamlang.ProtoMask
 	}
 
-	g.client.Write(protocol.NewClientMsgProtobuf(steamlang.EMsg_ClientToGC, &pb.CMsgGCClient{
+	g.client.Write(protocol.NewClientProtoMessage(steamlang.EMsg_ClientToGC, &pb.CMsgGCClient{
 		Msgtype: proto.Uint32(msgType),
 		Appid:   proto.Uint32(msg.GetAppID()),
 		Payload: buf.Bytes(),
 	}))
+
+	return nil
 }
 
 // Sets you in the given games. Specify none to quit all games.
@@ -79,7 +84,7 @@ func (g *GameCoordinator) SetGamesPlayed(appIDs ...uint64) {
 		}
 	}
 
-	g.client.Write(protocol.NewClientMsgProtobuf(steamlang.EMsg_ClientGamesPlayed, &pb.CMsgClientGamesPlayed{
+	g.client.Write(protocol.NewClientProtoMessage(steamlang.EMsg_ClientGamesPlayed, &pb.CMsgClientGamesPlayed{
 		GamesPlayed: games,
 	}))
 }

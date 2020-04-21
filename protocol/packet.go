@@ -89,51 +89,76 @@ func (p *Packet) String() string {
 	)
 }
 
-func (p *Packet) ReadProtoMsg(body proto.Message) *ClientMsgProtobuf {
+func (p *Packet) ReadProtoMsg(body proto.Message) (*ClientProtoMessage, error) {
 	header := steamlang.NewMsgHdrProtoBuf()
 	buf := bytes.NewBuffer(p.Data)
 
-	header.Deserialize(buf)
-	proto.Unmarshal(buf.Bytes(), body)
+	if err := header.Deserialize(buf); err != nil {
+		return nil, err
+	}
 
-	return &ClientMsgProtobuf{ // protobuf messages have no payload
+	if err := proto.Unmarshal(buf.Bytes(), body); err != nil {
+		return nil, err
+	}
+
+	msg := &ClientProtoMessage{
 		Header: header,
 		Body:   body,
 	}
+
+	return msg, nil
 }
 
-func (p *Packet) ReadClientMsg(body MessageBody) *ClientMsg {
+func (p *Packet) ReadClientMsg(body MessageBody) (*ClientStructMessage, error) {
 	header := steamlang.NewExtendedClientMsgHdr()
 	buf := bytes.NewReader(p.Data)
 
-	header.Deserialize(buf)
-	body.Deserialize(buf)
+	if err := header.Deserialize(buf); err != nil {
+		return nil, err
+	}
+
+	if err := body.Deserialize(buf); err != nil {
+		return nil, err
+	}
 
 	payload := make([]byte, buf.Len())
 
-	buf.Read(payload)
+	if _, err := buf.Read(payload); err != nil {
+		return nil, err
+	}
 
-	return &ClientMsg{
+	msg := &ClientStructMessage{
 		Header:  header,
 		Body:    body,
 		Payload: payload,
 	}
+
+	return msg, nil
 }
 
-func (p *Packet) ReadMsg(body MessageBody) *Msg {
+func (p *Packet) ReadMsg(body MessageBody) (*StructMessage, error) {
 	header := steamlang.NewMsgHdr()
 	buf := bytes.NewReader(p.Data)
 
-	header.Deserialize(buf)
-	body.Deserialize(buf)
+	if err := header.Deserialize(buf); err != nil {
+		return nil, err
+	}
+
+	if err := body.Deserialize(buf); err != nil {
+		return nil, err
+	}
 
 	payload := make([]byte, buf.Len())
 
-	buf.Read(payload)
+	if _, err := buf.Read(payload); err != nil {
+		return nil, err
+	}
 
-	return &Msg{
+	msg := &StructMessage{
 		Header:  header,
 		Body:    body,
 		Payload: payload,
 	}
+
+	return msg, nil
 }
