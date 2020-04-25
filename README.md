@@ -1,10 +1,16 @@
 # Steam for Go
 
+[![BSD](https://img.shields.io/github/license/13k/go-steam)](https://github.com/13k/go-steam/blob/master/LICENSE.txt)
+[![GoDoc](https://godoc.org/github.com/13k/go-steam?status.svg)](https://pkg.go.dev/github.com/13k/go-steam)
+[![GoReportCard](https://goreportcard.com/badge/github.com/13k/go-steam)](https://goreportcard.com/report/github.com/13k/go-steam)
+
 > Automate actions on the Steam network with Go.
 
 ## Introduction
 
-This library implements Steam's protocol to allow automation of different actions on Steam without running an actual Steam client. It is based on [SteamKit2](https://github.com/SteamRE/SteamKit), a .NET library.
+This library implements Steam's protocol to allow automation of different actions on Steam without
+running an actual Steam client. It is based on [SteamKit2](https://github.com/SteamRE/SteamKit), a
+dotnet library.
 
 In addition, it contains APIs to Steam Community features, like trade offers and inventories.
 
@@ -17,9 +23,11 @@ Some of the currently implemented features:
 - SteamGuard with two-factor authentication
 - Team Fortress 2: Crafting, moving, naming and deleting items
 
-If this is useful to you, there's also the [go-steamapi](https://github.com/Philipp15b/go-steamapi) package that wraps some of the official Steam Web API's types.
+If this is useful to you, there's also the [geyser](https://github.com/13k/geyser) package that
+implements the official Steam Web API.
 
-This package was originally authored by [Philipp15b](https://github.com/Philipp15b/go-steam) and was forked/adopted by FACEIT.
+This package was originally authored by [Philipp15b](https://github.com/Philipp15b/go-steam),
+forked/adopted by [FACEIT](https://github.com/faceit/go-steam) and forked by @13k.
 
 ## Installation
 
@@ -27,38 +35,38 @@ This package was originally authored by [Philipp15b](https://github.com/Philipp1
 
 ## Usage
 
-You can view the documentation with the [`godoc`](http://golang.org/cmd/godoc) tool or
-[online on godoc.org](http://godoc.org/github.com/13k/go-steam).
+You can view the documentation [online](https://pkg.go.dev/github.com/13k/go-steam).
 
 You should also take a look at the following sub-packages:
 
-- [`gsbot`](http://godoc.org/github.com/13k/go-steam/gsbot) utilites that make writing bots easier
-- [example bot](http://godoc.org/github.com/13k/go-steam/gsbot/gsbot) and [its source code](https://github.com/13k/go-steam/blob/master/gsbot/gsbot/gsbot.go)
-- [`trade`](http://godoc.org/github.com/13k/go-steam/trade) for trading
-- [`tradeoffer`](http://godoc.org/github.com/13k/go-steam/tradeoffer) for trade offers
-- [`economy/inventory`](http://godoc.org/github.com/13k/go-steam/economy/inventory) for inventories
-- [`tf2`](http://godoc.org/github.com/13k/go-steam/tf2) for Team Fortress 2 related things
+- [`gsbot`](https://pkg.go.dev/github.com/13k/go-steam/gsbot): utilites that make writing bots easier
+- [`gsbot` command](https://pkg.go.dev/github.com/13k/go-steam/cmd/gsbot): example of using `gsbot`
+- [`economy/inventory`](http://pkg.go.dev/github.com/13k/go-steam/economy/inventory): inventories
+- [`economy/trade`](https://pkg.go.dev/github.com/13k/go-steam/economy/trade): trading
+- [`economy/trade/tradeoffer`](https://pkg.go.dev/github.com/13k/go-steam/economy/trade/tradeoffer): trade offers
 
 ## Working with go-steam
 
-Whether you want to develop your own Steam bot or directly work on go-steam itself, there are are few things to know.
+Whether you want to develop your own Steam bot or directly work on go-steam itself, there are are
+few things to know.
 
-- If something is not working, check first if the same operation works (under the same conditions!) in the Steam client on that account. Maybe there's something go-steam doesn't handle correctly or you're missing a warning that's not obviously shown in go-steam. This is particularly important when working with trading since there are [restrictions](https://support.steampowered.com/kb_article.php?ref=1047-edfm-2932), for example newly authorized devices will not be able to trade for seven days.
-- Since Steam does not maintain a public API for most of the things go-steam implements, you can expect that sometimes things break randomly. Especially the `trade` and `tradeoffer` packages have been affected in the past.
-- Always gather as much information as possible. When you file an issue, be as precise and complete as you can. This makes debugging way easier.
-- If you haven't noticed yet, expect to find lots of things out yourself. Debugging can be complicated and Steam's internals are too.
-- Sometimes things break and other [SteamKit ports](https://github.com/SteamRE/SteamKit/wiki/Ports) are fixed already. Maybe take a look what people are saying over there? There's also the [SteamKit IRC channel](https://github.com/SteamRE/SteamKit/wiki#contact).
-
-## Updating go-steam to a new SteamKit version
-
-To update go-steam to a new version of SteamKit, do the following:
-
-    cd generator
-    go get -d -v ./
-    go build -v
-    ./generator clean proto steamlang
-
-Apply the protocol changes where necessary.
+- If something is not working, check first if the same operation works (under the same conditions!)
+  in the Steam client on that account. Maybe there's something go-steam doesn't handle correctly or
+  you're missing a warning that's not obviously shown in go-steam. This is particularly important
+  when working with trading since there are
+  [restrictions](https://support.steampowered.com/kb_article.php?ref=1047-edfm-2932), for example
+  newly authorized devices will not be able to trade for seven days.
+- Since Steam does not maintain a public API for most of the things go-steam implements, you can
+  expect that sometimes things break randomly. Especially the `economy/trade` and
+  `economy/trade/tradeoffer` packages have been affected in the past.
+- Always gather as much information as possible. When you file an issue, be as precise and complete
+  as you can. This makes debugging way easier.
+- If you haven't noticed yet, expect to find lots of things out yourself. Debugging can be
+  complicated and Steam's internals are too. [SteamKit](https://github.com/SteamRE/SteamKit) is the
+  reference implementation, so make sure to check it out when in doubt.
+- Sometimes things break and other [SteamKit ports](https://github.com/SteamRE/SteamKit/wiki/Ports)
+  are fixed already. Maybe take a look what people are saying over there? There's also the
+  [SteamKit IRC channel](https://github.com/SteamRE/SteamKit/wiki#contact).
 
 ## License
 
