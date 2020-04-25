@@ -61,7 +61,7 @@ func (a *Auth) HandleEvent(event interface{}) {
 	switch e := event.(type) {
 	case *steam.ConnectedEvent:
 		if err := a.LogOn(a.credentials); err != nil {
-			a.bot.Log.Fatalf("error writing sentry file: %v", err)
+			a.bot.Log.Fatalf("error logging in: %v", err)
 		}
 	case *steam.LoggedOnEvent:
 		a.bot.Log.Printf("Logged on (%v) with SteamID %v and account flags %v", e.Result, e.ClientSteamID, e.AccountFlags)

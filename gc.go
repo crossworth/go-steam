@@ -15,9 +15,9 @@ type GameCoordinator struct {
 	handlers []gc.PacketHandler
 }
 
-var _ PacketHandler = (*GameCoordinator)(nil)
+var _ protocol.PacketHandler = (*GameCoordinator)(nil)
 
-func newGC(client *Client) *GameCoordinator {
+func NewGC(client *Client) *GameCoordinator {
 	return &GameCoordinator{
 		client:   client,
 		handlers: make([]gc.PacketHandler, 0),
@@ -29,21 +29,21 @@ func (g *GameCoordinator) RegisterPacketHandler(handler gc.PacketHandler) {
 }
 
 func (g *GameCoordinator) HandlePacket(packet *protocol.Packet) {
-	if packet.EMsg != steamlang.EMsg_ClientFromGC {
+	if packet.EMsg() != steamlang.EMsg_ClientFromGC {
 		return
 	}
 
 	msg := &pb.CMsgGCClient{}
 
 	if _, err := packet.ReadProtoMsg(msg); err != nil {
-		g.client.Errorf("error reading message: %v", err)
+		g.client.Errorf("gc: error reading message: %v", err)
 		return
 	}
 
 	p, err := gc.NewPacket(msg)
 
 	if err != nil {
-		g.client.Errorf("error reading GC message: %v", err)
+		g.client.Errorf("gc: error reading message: %v", err)
 		return
 	}
 
@@ -62,10 +62,10 @@ func (g *GameCoordinator) Write(msg gc.Message) error {
 	msgType := msg.GetMsgType()
 
 	if msg.IsProto() {
-		msgType = msgType | steamlang.ProtoMask
+		msgType = steamlang.MaskProto(msgType)
 	}
 
-	g.client.Write(protocol.NewClientProtoMessage(steamlang.EMsg_ClientToGC, &pb.CMsgGCClient{
+	g.client.Write(protocol.NewProtoMessage(steamlang.EMsg_ClientToGC, &pb.CMsgGCClient{
 		Msgtype: proto.Uint32(msgType),
 		Appid:   proto.Uint32(msg.GetAppID()),
 		Payload: buf.Bytes(),
@@ -84,7 +84,7 @@ func (g *GameCoordinator) SetGamesPlayed(appIDs ...uint64) {
 		}
 	}
 
-	g.client.Write(protocol.NewClientProtoMessage(steamlang.EMsg_ClientGamesPlayed, &pb.CMsgClientGamesPlayed{
+	g.client.Write(protocol.NewProtoMessage(steamlang.EMsg_ClientGamesPlayed, &pb.CMsgClientGamesPlayed{
 		GamesPlayed: games,
 	}))
 }

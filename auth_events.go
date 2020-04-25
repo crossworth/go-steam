@@ -28,7 +28,7 @@ type LoggedOffEvent struct {
 }
 
 type MachineAuthUpdateEvent struct {
-	Hash []byte
+	Hash SentryHash
 }
 
 type AccountInfoEvent struct {

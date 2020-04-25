@@ -9,6 +9,10 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+type PacketHandler interface {
+	HandleGCPacket(*Packet)
+}
+
 // An incoming, partially unread message from the Game Coordinator.
 type Packet struct {
 	AppID       uint32
@@ -65,6 +69,6 @@ func (g *Packet) ReadProtoMsg(body proto.Message) error {
 	return proto.Unmarshal(g.Body, body)
 }
 
-func (g *Packet) ReadMsg(body protocol.MessageBody) error {
+func (g *Packet) ReadMsg(body protocol.StructMessageBody) error {
 	return body.Deserialize(bytes.NewReader(g.Body))
 }

@@ -15,9 +15,9 @@ import (
 )
 
 type connection interface {
+	io.WriteCloser
+
 	Read() (*protocol.Packet, error)
-	Write([]byte) error
-	Close() error
 	SetEncryptionKey([]byte) error
 	IsEncrypted() bool
 }
@@ -34,27 +34,28 @@ type tcpConnection struct {
 
 func dialTCP(laddr, raddr *net.TCPAddr) (*tcpConnection, error) {
 	conn, err := net.DialTCP("tcp", laddr, raddr)
+
 	if err != nil {
 		return nil, err
 	}
 
-	return &tcpConnection{
-		conn: conn,
-	}, nil
+	c := &tcpConnection{conn: conn}
+
+	return c, nil
 }
 
 func (c *tcpConnection) Read() (*protocol.Packet, error) {
 	// All packets begin with a packet length
 	var packetLen uint32
-	err := binary.Read(c.conn, binary.LittleEndian, &packetLen)
-	if err != nil {
+
+	if err := binary.Read(c.conn, binary.LittleEndian, &packetLen); err != nil {
 		return nil, err
 	}
 
 	// A magic value follows for validation
 	var packetMagic uint32
 
-	if err = binary.Read(c.conn, binary.LittleEndian, &packetMagic); err != nil {
+	if err := binary.Read(c.conn, binary.LittleEndian, &packetMagic); err != nil {
 		return nil, err
 	}
 
@@ -68,7 +69,7 @@ func (c *tcpConnection) Read() (*protocol.Packet, error) {
 
 	buf := make([]byte, packetLen)
 
-	if _, err = io.ReadFull(c.conn, buf); err != nil {
+	if _, err := io.ReadFull(c.conn, buf); err != nil {
 		if errors.Is(err, io.ErrUnexpectedEOF) {
 			return nil, io.EOF
 		}
@@ -85,26 +86,31 @@ func (c *tcpConnection) Read() (*protocol.Packet, error) {
 // Write sends a message.
 //
 // This may only be used by one goroutine at a time.
-func (c *tcpConnection) Write(message []byte) error {
-	var err error
-
-	message, err = c.encrypt(message)
-
-	if err != nil {
-		return err
+func (c *tcpConnection) Write(message []byte) (written int, err error) {
+	if message, err = c.encrypt(message); err != nil {
+		return
 	}
 
-	if err = binary.Write(c.conn, binary.LittleEndian, uint32(len(message))); err != nil {
-		return err
+	msgLen := uint32(len(message))
+
+	if err = binary.Write(c.conn, binary.LittleEndian, msgLen); err != nil {
+		return
 	}
+
+	written += binary.Size(msgLen)
 
 	if err = binary.Write(c.conn, binary.LittleEndian, tcpConnectionMagic); err != nil {
-		return err
+		return
 	}
 
-	_, err = c.conn.Write(message)
+	written += binary.Size(tcpConnectionMagic)
 
-	return err
+	var n int
+
+	n, err = c.conn.Write(message)
+	written += n
+
+	return
 }
 
 func (c *tcpConnection) Close() error {
@@ -141,8 +147,12 @@ func (c *tcpConnection) encrypt(message []byte) ([]byte, error) {
 	c.cipherMutex.RLock()
 	defer c.cipherMutex.RUnlock()
 
+	var err error
+
 	if c.ciph != nil {
-		return cryptoutil.SymmetricEncrypt(c.ciph, message)
+		if message, err = cryptoutil.SymmetricEncrypt(c.ciph, message); err != nil {
+			return nil, err
+		}
 	}
 
 	return message, nil
@@ -153,7 +163,7 @@ func (c *tcpConnection) decrypt(message []byte) []byte {
 	defer c.cipherMutex.RUnlock()
 
 	if c.ciph != nil {
-		return cryptoutil.SymmetricDecrypt(c.ciph, message)
+		message = cryptoutil.SymmetricDecrypt(c.ciph, message)
 	}
 
 	return message

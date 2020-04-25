@@ -37,12 +37,13 @@ func main() {
 		AuthCode: authcode,
 	}
 
-	gsbot.NewAuth(bot, credentials, "sentry.bin")
 	_, err := gsbot.NewDebug(bot, "debug")
 
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	gsbot.NewAuth(bot, credentials, "sentry.bin")
 
 	serverList := gsbot.NewServerList(bot, "serverlist.json")
 

@@ -13,7 +13,9 @@ type Notifications struct {
 	client        *Client
 }
 
-func newNotifications(client *Client) *Notifications {
+var _ protocol.PacketHandler = (*Notifications)(nil)
+
+func NewNotifications(client *Client) *Notifications {
 	return &Notifications{
 		make(map[NotificationType]uint),
 		client,
@@ -21,7 +23,7 @@ func newNotifications(client *Client) *Notifications {
 }
 
 func (n *Notifications) HandlePacket(packet *protocol.Packet) {
-	switch packet.EMsg {
+	switch packet.EMsg() {
 	case steamlang.EMsg_ClientUserNotifications:
 		n.handleClientUserNotifications(packet)
 	}
@@ -37,7 +39,7 @@ func (n *Notifications) handleClientUserNotifications(packet *protocol.Packet) {
 	msg := &pb.CMsgClientUserNotifications{}
 
 	if _, err := packet.ReadProtoMsg(msg); err != nil {
-		n.client.Errorf("error reading message: %v", err)
+		n.client.Errorf("notifications/ClientUserNotifications: error reading message: %v", err)
 		return
 	}
 
@@ -51,8 +53,9 @@ func (n *Notifications) handleClientUserNotifications(packet *protocol.Packet) {
 	// check if there is a notification in our map that isn't in the current packet
 	for typ := range n.notifications {
 		exists := false
+
 		for _, t := range msg.GetNotifications() {
-			if NotificationType(*t.UserNotificationType) == typ {
+			if NotificationType(t.GetUserNotificationType()) == typ {
 				exists = true
 				break
 			}

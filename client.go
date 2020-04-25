@@ -21,12 +21,13 @@ import (
 	"github.com/13k/go-steam/steamid"
 )
 
-// Represents a client to the Steam network.
-// Always poll events from the channel returned by Events() or receiving messages will stop.
-// All access, unless otherwise noted, should be threadsafe.
+// Client implements a client to the Steam network.
 //
-// When a FatalErrorEvent is emitted, the connection is automatically closed. The same client can be used to reconnect.
-// Other errors don't have any effect.
+// Always poll events from the channel returned by Events() or receiving messages will stop. All
+// access, unless otherwise noted, should be threadsafe.
+//
+// When a FatalErrorEvent is emitted, the connection is automatically closed. The same client can be
+// used to reconnect. Other errors don't have any effect.
 type Client struct {
 	// these need to be 64 bit aligned for sync/atomic on 32bit
 	sessionID    int32
@@ -41,23 +42,17 @@ type Client struct {
 	Trading       *Trading
 	GC            *GameCoordinator
 
-	events        chan interface{}
-	handlers      []PacketHandler
-	handlersMutex sync.RWMutex
+	events      chan interface{}
+	handlers    []protocol.PacketHandler
+	handlersMtx sync.RWMutex
 
 	tempSessionKey []byte
 
-	ConnectionTimeout time.Duration
-
-	mutex     sync.RWMutex // guarding conn and writeChan
+	mtx       sync.RWMutex // guarding conn and writeChan
 	conn      connection
 	writeChan chan protocol.Message
 	writeBuf  *bytes.Buffer
 	heartbeat *time.Ticker
-}
-
-type PacketHandler interface {
-	HandlePacket(*protocol.Packet)
 }
 
 func NewClient() *Client {
@@ -66,17 +61,18 @@ func NewClient() *Client {
 		writeBuf: &bytes.Buffer{},
 	}
 
-	client.Auth = &Auth{client: client}
+	client.Auth = NewAuth(client)
+	client.Social = NewSocial(client)
+	client.Web = NewWeb(client)
+	client.Notifications = NewNotifications(client)
+	client.Trading = NewTrading(client)
+	client.GC = NewGC(client)
+
 	client.RegisterPacketHandler(client.Auth)
-	client.Social = newSocial(client)
 	client.RegisterPacketHandler(client.Social)
-	client.Web = &Web{client: client}
 	client.RegisterPacketHandler(client.Web)
-	client.Notifications = newNotifications(client)
 	client.RegisterPacketHandler(client.Notifications)
-	client.Trading = &Trading{client: client}
 	client.RegisterPacketHandler(client.Trading)
-	client.GC = newGC(client)
 	client.RegisterPacketHandler(client.GC)
 
 	return client
@@ -103,15 +99,15 @@ func (c *Client) Errorf(format string, a ...interface{}) {
 	c.Emit(fmt.Errorf(format, a...))
 }
 
-// Registers a PacketHandler that receives all incoming packets.
-func (c *Client) RegisterPacketHandler(handler PacketHandler) {
-	c.handlersMutex.Lock()
-	defer c.handlersMutex.Unlock()
+// Registers a protocol.PacketHandler that receives all incoming packets.
+func (c *Client) RegisterPacketHandler(handler protocol.PacketHandler) {
+	c.handlersMtx.Lock()
+	defer c.handlersMtx.Unlock()
 	c.handlers = append(c.handlers, handler)
 }
 
-// GetNextJobID returns the next job ID to use.
-func (c *Client) GetNextJobID() protocol.JobID {
+// NextJobID returns the next job ID to use.
+func (c *Client) NextJobID() protocol.JobID {
 	return protocol.JobID(atomic.AddUint64(&c.currentJobID, 1))
 }
 
@@ -134,8 +130,8 @@ func (c *Client) setSessionID(sessionID int32) {
 }
 
 func (c *Client) Connected() bool {
-	c.mutex.RLock()
-	defer c.mutex.RUnlock()
+	c.mtx.RLock()
+	defer c.mtx.RUnlock()
 	return c.conn != nil
 }
 
@@ -201,8 +197,8 @@ func (c *Client) ConnectToBind(addr *netutil.PortAddr, local *net.TCPAddr) error
 }
 
 func (c *Client) Disconnect() {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
+	c.mtx.Lock()
+	defer c.mtx.Unlock()
 
 	if c.conn == nil {
 		return
@@ -231,8 +227,8 @@ func (c *Client) Write(msg protocol.Message) {
 		cm.SetSteamID(c.SteamID())
 	}
 
-	c.mutex.RLock()
-	defer c.mutex.RUnlock()
+	c.mtx.RLock()
+	defer c.mtx.RUnlock()
 
 	if c.conn == nil {
 		return
@@ -244,9 +240,9 @@ func (c *Client) Write(msg protocol.Message) {
 func (c *Client) readLoop() {
 	for {
 		// This *should* be atomic on most platforms, but the Go spec doesn't guarantee it
-		c.mutex.RLock()
+		c.mtx.RLock()
 		conn := c.conn
-		c.mutex.RUnlock()
+		c.mtx.RUnlock()
 
 		if conn == nil {
 			return
@@ -255,7 +251,7 @@ func (c *Client) readLoop() {
 		packet, err := conn.Read()
 
 		if err != nil {
-			c.Fatalf("Error reading from the connection: %v", err)
+			c.Fatalf("client/read: error reading from the connection: %v", err)
 			return
 		}
 
@@ -264,34 +260,38 @@ func (c *Client) readLoop() {
 }
 
 func (c *Client) writeLoop() {
+	defer func() {
+		c.writeBuf.Reset()
+	}()
+
 	for {
-		c.mutex.RLock()
+		c.mtx.RLock()
 		conn := c.conn
-		c.mutex.RUnlock()
+		c.mtx.RUnlock()
+
 		if conn == nil {
 			return
 		}
 
 		msg, ok := <-c.writeChan
+
 		if !ok {
 			return
 		}
 
-		err := msg.Serialize(c.writeBuf)
-		if err != nil {
-			c.writeBuf.Reset()
-			c.Fatalf("Error serializing message %v: %v", msg, err)
-			return
-		}
-
-		err = conn.Write(c.writeBuf.Bytes())
-
 		c.writeBuf.Reset()
 
-		if err != nil {
-			c.Fatalf("Error writing message %v: %v", msg, err)
+		if err := msg.Serialize(c.writeBuf); err != nil {
+			c.Fatalf("client/write: error serializing message %s: %v", msg.Type(), err)
 			return
 		}
+
+		if _, err := c.conn.Write(c.writeBuf.Bytes()); err != nil {
+			c.Fatalf("client/write: error writing message %s: %v", msg.Type(), err)
+			return
+		}
+
+		c.writeBuf.Reset()
 	}
 }
 
@@ -299,19 +299,24 @@ func (c *Client) heartbeatLoop(seconds time.Duration) {
 	if c.heartbeat != nil {
 		c.heartbeat.Stop()
 	}
+
 	c.heartbeat = time.NewTicker(seconds * time.Second)
+
 	for {
 		_, ok := <-c.heartbeat.C
+
 		if !ok {
 			break
 		}
-		c.Write(protocol.NewClientProtoMessage(steamlang.EMsg_ClientHeartBeat, &pb.CMsgClientHeartBeat{}))
+
+		c.Write(protocol.NewProtoMessage(steamlang.EMsg_ClientHeartBeat, &pb.CMsgClientHeartBeat{}))
 	}
+
 	c.heartbeat = nil
 }
 
 func (c *Client) handlePacket(packet *protocol.Packet) {
-	switch packet.EMsg {
+	switch packet.EMsg() {
 	case steamlang.EMsg_ChannelEncryptRequest:
 		c.handleChannelEncryptRequest(packet)
 	case steamlang.EMsg_ChannelEncryptResult:
@@ -322,8 +327,9 @@ func (c *Client) handlePacket(packet *protocol.Packet) {
 		c.handleClientCMList(packet)
 	}
 
-	c.handlersMutex.RLock()
-	defer c.handlersMutex.RUnlock()
+	c.handlersMtx.RLock()
+	defer c.handlersMtx.RUnlock()
+
 	for _, handler := range c.handlers {
 		handler.HandlePacket(packet)
 	}
@@ -333,26 +339,26 @@ func (c *Client) handleChannelEncryptRequest(packet *protocol.Packet) {
 	body := steamlang.NewMsgChannelEncryptRequest()
 
 	if _, err := packet.ReadMsg(body); err != nil {
-		c.Fatalf("error reading message: %v", err)
+		c.Fatalf("client/ChannelEncryptRequest: error reading message: %v", err)
 		return
 	}
 
 	if body.Universe != steamlang.EUniverse_Public {
-		c.Fatalf("Invalid universe %v", body.Universe)
+		c.Fatalf("client/ChannelEncryptRequest: invalid universe %v", body.Universe)
 		return
 	}
 
 	c.tempSessionKey = make([]byte, 32)
 
 	if _, err := rand.Read(c.tempSessionKey); err != nil {
-		c.Fatalf("handleChannelEncryptRequest: Error generating session key: %v", err)
+		c.Fatalf("client/ChannelEncryptRequest: error generating session key: %v", err)
 		return
 	}
 
 	encryptedKey, err := cryptoutil.RSAEncrypt(GetPublicKey(steamlang.EUniverse_Public), c.tempSessionKey)
 
 	if err != nil {
-		c.Fatalf("handleChannelEncryptRequest: Error encrypting session key: %v", err)
+		c.Fatalf("client/ChannelEncryptRequest: error encrypting session key: %v", err)
 		return
 	}
 
@@ -360,7 +366,7 @@ func (c *Client) handleChannelEncryptRequest(packet *protocol.Packet) {
 	payload.Write(encryptedKey)
 
 	if err := binary.Write(payload, binary.LittleEndian, crc32.ChecksumIEEE(encryptedKey)); err != nil {
-		c.Fatalf("handleChannelEncryptRequest: Error creating encrypted response payload: %v", err)
+		c.Fatalf("client/ChannelEncryptRequest: error creating encrypted response payload: %v", err)
 		return
 	}
 
@@ -376,17 +382,17 @@ func (c *Client) handleChannelEncryptResult(packet *protocol.Packet) {
 	body := steamlang.NewMsgChannelEncryptResult()
 
 	if _, err := packet.ReadMsg(body); err != nil {
-		c.Fatalf("error reading message: %v", err)
+		c.Fatalf("client/ChannelEncryptResult: error reading message: %v", err)
 		return
 	}
 
 	if body.Result != steamlang.EResult_OK {
-		c.Fatalf("encryption failed: %v", body.Result)
+		c.Fatalf("client/ChannelEncryptResult: encryption failed: %v", body.Result)
 		return
 	}
 
 	if err := c.conn.SetEncryptionKey(c.tempSessionKey); err != nil {
-		c.Fatalf("encryption failed: %v", err)
+		c.Fatalf("client/ChannelEncryptResult: error setting encryption key: %v", err)
 		return
 	}
 
@@ -399,7 +405,7 @@ func (c *Client) handleMulti(packet *protocol.Packet) {
 	body := &pb.CMsgMulti{}
 
 	if _, err := packet.ReadProtoMsg(body); err != nil {
-		c.Errorf("error reading message: %v", err)
+		c.Errorf("client/Multi: error reading message: %v", err)
 		return
 	}
 
@@ -409,14 +415,14 @@ func (c *Client) handleMulti(packet *protocol.Packet) {
 		r, err := gzip.NewReader(bytes.NewReader(payload))
 
 		if err != nil {
-			c.Errorf("handleMulti: Error while decompressing: %v", err)
+			c.Errorf("client/Multi: error decompressing: %v", err)
 			return
 		}
 
 		payload, err = ioutil.ReadAll(r)
 
 		if err != nil {
-			c.Errorf("handleMulti: Error while decompressing: %v", err)
+			c.Errorf("client/Multi: error decompressing: %v", err)
 			return
 		}
 	}
@@ -427,21 +433,21 @@ func (c *Client) handleMulti(packet *protocol.Packet) {
 		var length uint32
 
 		if err := binary.Read(pr, binary.LittleEndian, &length); err != nil {
-			c.Errorf("Error reading packet in Multi msg %v: %v", packet, err)
+			c.Errorf("client/Multi: error reading packet %v: %v", packet, err)
 			return
 		}
 
 		packetData := make([]byte, length)
 
 		if _, err := pr.Read(packetData); err != nil {
-			c.Errorf("Error reading packet in Multi msg %v: %v", packet, err)
+			c.Errorf("client/Multi: error reading packet %v: %v", packet, err)
 			return
 		}
 
 		p, err := protocol.NewPacket(packetData)
 
 		if err != nil {
-			c.Errorf("Error reading packet in Multi msg %v: %v", packet, err)
+			c.Errorf("client/Multi: error reading packet %v: %v", packet, err)
 			continue
 		}
 
@@ -453,7 +459,7 @@ func (c *Client) handleClientCMList(packet *protocol.Packet) {
 	body := &pb.CMsgClientCMList{}
 
 	if _, err := packet.ReadProtoMsg(body); err != nil {
-		c.Errorf("error reading message: %v", err)
+		c.Errorf("client/ClientCMList: error reading message: %v", err)
 		return
 	}
 

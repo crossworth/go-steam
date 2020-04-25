@@ -39,8 +39,14 @@ type Web struct {
 	client      *Client
 }
 
+var _ protocol.PacketHandler = (*Web)(nil)
+
+func NewWeb(client *Client) *Web {
+	return &Web{client: client}
+}
+
 func (w *Web) HandlePacket(packet *protocol.Packet) {
-	switch packet.EMsg {
+	switch packet.EMsg() {
 	case steamlang.EMsg_ClientNewLoginKey:
 		w.handleNewLoginKey(packet)
 	case steamlang.EMsg_ClientRequestWebAPIAuthenticateUserNonceResponse:
@@ -120,7 +126,7 @@ func (w *Web) apiLogOn() error {
 		atomic.StoreUint32(&w.relogOnNonce, 1)
 
 		pbmsg := &pb.CMsgClientRequestWebAPIAuthenticateUserNonce{}
-		msg := protocol.NewClientProtoMessage(steamlang.EMsg_ClientRequestWebAPIAuthenticateUserNonce, pbmsg)
+		msg := protocol.NewProtoMessage(steamlang.EMsg_ClientRequestWebAPIAuthenticateUserNonce, pbmsg)
 
 		w.client.Write(msg)
 
@@ -162,7 +168,7 @@ func (w *Web) handleNewLoginKey(packet *protocol.Packet) {
 		UniqueId: proto.Uint32(msg.GetUniqueId()),
 	}
 
-	w.client.Write(protocol.NewClientProtoMessage(steamlang.EMsg_ClientNewLoginKeyAccepted, acceptMsg))
+	w.client.Write(protocol.NewProtoMessage(steamlang.EMsg_ClientNewLoginKeyAccepted, acceptMsg))
 
 	// number -> string -> bytes -> base64
 	uniqueIDStr := strconv.FormatUint(uint64(msg.GetUniqueId()), 10)

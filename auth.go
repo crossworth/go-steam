@@ -1,53 +1,65 @@
 package steam
 
 import (
-	"crypto/sha1"
 	"errors"
 	"time"
 
 	pb "github.com/13k/go-steam-resources/protobuf/steam"
 	"github.com/13k/go-steam-resources/steamlang"
+	"github.com/13k/go-steam/cryptoutil"
 	"github.com/13k/go-steam/protocol"
 	"github.com/13k/go-steam/steamid"
 	"google.golang.org/protobuf/proto"
 )
 
-type Auth struct {
-	client *Client
-}
-
 type SentryHash []byte
 
 type LogOnDetails struct {
 	Username string
-
-	// If logging into an account without a login key, the account's password.
+	// Can be omitted if using a LoginKey.
 	Password string
-
-	// If you have a Steam Guard email code, you can provide it here.
+	// Previously saved login key.
+	LoginKey string
+	// Steam Guard email code.
 	AuthCode string
-
-	// If you have a Steam Guard mobile two-factor authentication code, you can provide it here.
-	TwoFactorCode  string
-	SentryFileHash SentryHash
-	LoginKey       string
-
-	// true if you want to get a login key which can be used in lieu of
-	// a password for subsequent logins. false or omitted otherwise.
+	// Steam Guard two-factor authentication code.
+	TwoFactorCode string
+	// Tells Steam to generate a login key to be used on subsequent logins without a password.
+	// A `LoginKeyEvent` event will be emitted with the LoginKey to be saved.
 	ShouldRememberPassword bool
+	// Previously saved machine identification hash.
+	// It can be saved when the event `MachineAuthUpdateEvent` is emitted.
+	SentryFileHash SentryHash
+	// Previously saved CellID from a `LoggedOnEvent` event.
+	CellID uint32
+	// LoginID uniquely identifies a logon session (required if establishing more than one active
+	// session to the given account).
+	LoginID uint32
 }
 
-// Log on with the given details. You must always specify username and
-// password OR username and loginkey. For the first login, don't set an authcode or a hash and you'll
-//  receive an error (EResult_AccountLogonDenied)
-// and Steam will send you an authcode. Then you have to login again, this time with the authcode.
-// Shortly after logging in, you'll receive a MachineAuthUpdateEvent with a hash which allows
-// you to login without using an authcode in the future.
+type Auth struct {
+	client *Client
+}
+
+var _ protocol.PacketHandler = (*Auth)(nil)
+
+func NewAuth(client *Client) *Auth {
+	return &Auth{client: client}
+}
+
+// LogOn logs on with the given details.
+//
+// You must always specify username and password OR username and loginkey. For the first login,
+// don't set an authcode or a hash and you'll receive an error (EResult_AccountLogonDenied) and
+// Steam will send you an authcode. Then you have to login again, this time with the authcode.
+//
+// Shortly after logging in, you'll receive a `MachineAuthUpdateEvent` with a hash which allows you
+// to login without using an authcode in the future.
 //
 // If you don't use Steam Guard, username and password are enough.
 //
-// After the event EMsg_ClientNewLoginKey is received you can use the LoginKey
-// to login instead of using the password.
+// After the event EMsg_ClientNewLoginKey is received you can use the LoginKey to login instead of
+// using the password.
 func (a *Auth) LogOn(details *LogOnDetails) error {
 	if details.Username == "" {
 		return errors.New("steam/auth: username must be set")
@@ -57,9 +69,37 @@ func (a *Auth) LogOn(details *LogOnDetails) error {
 		return errors.New("steam/auth: Password or LoginKey must be set")
 	}
 
-	logon := &pb.CMsgClientLogon{}
-	logon.AccountName = &details.Username
-	logon.Password = &details.Password
+	machineID, err := NewMachineID()
+
+	if err != nil {
+		return err
+	}
+
+	machineIDAuth, err := machineID.Auth()
+
+	if err != nil {
+		return err
+	}
+
+	steamID := steamid.New(
+		steamlang.EAccountType_Individual,
+		steamlang.EUniverse_Public,
+		0,
+		steamid.DesktopInstance,
+	)
+
+	logon := &pb.CMsgClientLogon{
+		ProtocolVersion:           proto.Uint32(steamlang.MsgClientLogon_CurrentProtocol),
+		AccountName:               proto.String(details.Username),
+		Password:                  proto.String(details.Password),
+		ShouldRememberPassword:    proto.Bool(details.ShouldRememberPassword),
+		ClientLanguage:            proto.String("english"),
+		ShaSentryfile:             details.SentryFileHash,
+		EresultSentryfile:         proto.Int32(int32(steamlang.EResult_FileNotFound)),
+		SupportsRateLimitResponse: proto.Bool(true),
+		ChatMode:                  proto.Uint32(2),
+		MachineId:                 machineIDAuth,
+	}
 
 	if details.AuthCode != "" {
 		logon.AuthCode = proto.String(details.AuthCode)
@@ -69,32 +109,37 @@ func (a *Auth) LogOn(details *LogOnDetails) error {
 		logon.TwoFactorCode = proto.String(details.TwoFactorCode)
 	}
 
-	logon.ClientLanguage = proto.String("english")
-	logon.ProtocolVersion = proto.Uint32(steamlang.MsgClientLogon_CurrentProtocol)
-	logon.ShaSentryfile = details.SentryFileHash
-
 	if details.LoginKey != "" {
 		logon.LoginKey = proto.String(details.LoginKey)
 	}
 
-	if details.ShouldRememberPassword {
-		logon.ShouldRememberPassword = proto.Bool(details.ShouldRememberPassword)
+	if details.SentryFileHash != nil {
+		logon.EresultSentryfile = proto.Int32(int32(steamlang.EResult_OK))
 	}
 
-	a.client.setSteamID(steamid.New(
-		steamlang.EAccountType_Individual,
-		steamlang.EUniverse_Public,
-		0,
-		steamid.DesktopInstance,
-	))
+	if details.CellID != 0 {
+		logon.CellId = proto.Uint32(details.CellID)
+	}
 
-	a.client.Write(protocol.NewClientProtoMessage(steamlang.EMsg_ClientLogon, logon))
+	if details.LoginID != 0 {
+		logon.ObfuscatedPrivateIp = &pb.CMsgIPAddress{
+			Ip: &pb.CMsgIPAddress_V4{V4: details.LoginID},
+		}
+	}
+
+	msg := protocol.NewProtoMessage(steamlang.EMsg_ClientLogon, logon)
+
+	msg.SetSessionID(0)
+	msg.SetSteamID(steamID)
+
+	a.client.setSteamID(steamID)
+	a.client.Write(msg)
 
 	return nil
 }
 
 func (a *Auth) HandlePacket(packet *protocol.Packet) {
-	switch packet.EMsg {
+	switch packet.EMsg() {
 	case steamlang.EMsg_ClientLogOnResponse:
 		a.handleLogOnResponse(packet)
 	case steamlang.EMsg_ClientNewLoginKey:
@@ -109,8 +154,8 @@ func (a *Auth) HandlePacket(packet *protocol.Packet) {
 }
 
 func (a *Auth) handleLogOnResponse(packet *protocol.Packet) {
-	if !packet.IsProto {
-		a.client.Fatalf("received non-proto logon response")
+	if !packet.IsProto() {
+		a.client.Fatalf("auth/LogOnResponse: received non-proto message")
 		return
 	}
 
@@ -118,7 +163,7 @@ func (a *Auth) handleLogOnResponse(packet *protocol.Packet) {
 	msg, err := packet.ReadProtoMsg(body)
 
 	if err != nil {
-		a.client.Fatalf("error reading protobuf message: %v", err)
+		a.client.Fatalf("auth/LogOnResponse: error reading message: %v", err)
 		return
 	}
 
@@ -150,7 +195,7 @@ func (a *Auth) handleLoginKey(packet *protocol.Packet) {
 	body := &pb.CMsgClientNewLoginKey{}
 
 	if _, err := packet.ReadProtoMsg(body); err != nil {
-		a.client.Errorf("error reading message: %v", err)
+		a.client.Errorf("auth/LoginKey: error reading message: %v", err)
 		return
 	}
 
@@ -158,7 +203,7 @@ func (a *Auth) handleLoginKey(packet *protocol.Packet) {
 		UniqueId: proto.Uint32(body.GetUniqueId()),
 	}
 
-	a.client.Write(protocol.NewClientProtoMessage(steamlang.EMsg_ClientNewLoginKeyAccepted, pbAccepted))
+	a.client.Write(protocol.NewProtoMessage(steamlang.EMsg_ClientNewLoginKeyAccepted, pbAccepted))
 
 	a.client.Emit(&LoginKeyEvent{
 		UniqueID: body.GetUniqueId(),
@@ -169,11 +214,11 @@ func (a *Auth) handleLoginKey(packet *protocol.Packet) {
 func (a *Auth) handleLoggedOff(packet *protocol.Packet) {
 	var result steamlang.EResult
 
-	if packet.IsProto {
+	if packet.IsProto() {
 		body := &pb.CMsgClientLoggedOff{}
 
 		if _, err := packet.ReadProtoMsg(body); err != nil {
-			a.client.Errorf("error reading message: %v", err)
+			a.client.Errorf("auth/LoggedOff: error reading message: %v", err)
 			return
 		}
 
@@ -182,7 +227,7 @@ func (a *Auth) handleLoggedOff(packet *protocol.Packet) {
 		body := &steamlang.MsgClientLoggedOff{}
 
 		if _, err := packet.ReadClientMsg(body); err != nil {
-			a.client.Errorf("error reading message: %v", err)
+			a.client.Errorf("auth/LoggedOff: error reading message: %v", err)
 			return
 		}
 
@@ -196,36 +241,29 @@ func (a *Auth) handleUpdateMachineAuth(packet *protocol.Packet) {
 	body := &pb.CMsgClientUpdateMachineAuth{}
 
 	if _, err := packet.ReadProtoMsg(body); err != nil {
-		a.client.Errorf("error reading message: %v", err)
+		a.client.Errorf("auth/UpdateMachineAuth: error reading message: %v", err)
 		return
 	}
 
-	hash := sha1.New()
-
-	if _, err := hash.Write(packet.Data); err != nil {
-		a.client.Fatalf("auth: error generating sha1 hash of machine auth: %v", err)
-		return
-	}
-
-	sha := hash.Sum(nil)
+	sha1sum := cryptoutil.SHA1Sum(packet.Data)
 
 	pbAuthRes := &pb.CMsgClientUpdateMachineAuthResponse{
-		ShaFile: sha,
+		ShaFile: sha1sum,
 	}
 
-	msg := protocol.NewClientProtoMessage(steamlang.EMsg_ClientUpdateMachineAuthResponse, pbAuthRes)
+	msg := protocol.NewProtoMessage(steamlang.EMsg_ClientUpdateMachineAuthResponse, pbAuthRes)
 
-	msg.SetTargetJobID(packet.SourceJobID)
+	msg.SetTargetJobID(packet.SourceJobID())
 
 	a.client.Write(msg)
-	a.client.Emit(&MachineAuthUpdateEvent{sha})
+	a.client.Emit(&MachineAuthUpdateEvent{Hash: sha1sum})
 }
 
 func (a *Auth) handleAccountInfo(packet *protocol.Packet) {
 	body := &pb.CMsgClientAccountInfo{}
 
 	if _, err := packet.ReadProtoMsg(body); err != nil {
-		a.client.Errorf("error reading message: %v", err)
+		a.client.Errorf("auth/AccountInfo: error reading message: %v", err)
 		return
 	}
 

@@ -21,13 +21,19 @@ type Trading struct {
 	client *Client
 }
 
+var _ protocol.PacketHandler = (*Trading)(nil)
+
+func NewTrading(client *Client) *Trading {
+	return &Trading{client: client}
+}
+
 func (t *Trading) HandlePacket(packet *protocol.Packet) {
-	switch packet.EMsg {
+	switch packet.EMsg() {
 	case steamlang.EMsg_EconTrading_InitiateTradeProposed:
 		msg := &pb.CMsgTrading_InitiateTradeRequest{}
 
 		if _, err := packet.ReadProtoMsg(msg); err != nil {
-			t.client.Errorf("error reading message: %v", err)
+			t.client.Errorf("trading/InitiateTradeProposed: error reading message: %v", err)
 			return
 		}
 
@@ -39,7 +45,7 @@ func (t *Trading) HandlePacket(packet *protocol.Packet) {
 		msg := &pb.CMsgTrading_InitiateTradeResponse{}
 
 		if _, err := packet.ReadProtoMsg(msg); err != nil {
-			t.client.Errorf("error reading message: %v", err)
+			t.client.Errorf("trading/InitiateTradeResponse: error reading message: %v", err)
 			return
 		}
 
@@ -57,7 +63,7 @@ func (t *Trading) HandlePacket(packet *protocol.Packet) {
 		msg := &pb.CMsgTrading_StartSession{}
 
 		if _, err := packet.ReadProtoMsg(msg); err != nil {
-			t.client.Errorf("error reading message: %v", err)
+			t.client.Errorf("trading/StartSession: error reading message: %v", err)
 			return
 		}
 
@@ -74,7 +80,7 @@ func (t *Trading) RequestTrade(other steamid.SteamID) {
 		OtherSteamid: proto.Uint64(uint64(other)),
 	}
 
-	msg := protocol.NewClientProtoMessage(steamlang.EMsg_EconTrading_InitiateTradeRequest, pbmsg)
+	msg := protocol.NewProtoMessage(steamlang.EMsg_EconTrading_InitiateTradeRequest, pbmsg)
 
 	t.client.Write(msg)
 }
@@ -92,7 +98,7 @@ func (t *Trading) RespondRequest(requestID TradeRequestID, accept bool) {
 		Response:       proto.Uint32(resp),
 	}
 
-	msg := protocol.NewClientProtoMessage(steamlang.EMsg_EconTrading_InitiateTradeResponse, pbmsg)
+	msg := protocol.NewProtoMessage(steamlang.EMsg_EconTrading_InitiateTradeResponse, pbmsg)
 
 	t.client.Write(msg)
 }
@@ -103,7 +109,7 @@ func (t *Trading) CancelRequest(other steamid.SteamID) {
 		OtherSteamid: proto.Uint64(uint64(other)),
 	}
 
-	msg := protocol.NewClientProtoMessage(steamlang.EMsg_EconTrading_CancelTradeRequest, pbmsg)
+	msg := protocol.NewProtoMessage(steamlang.EMsg_EconTrading_CancelTradeRequest, pbmsg)
 
 	t.client.Write(msg)
 }
