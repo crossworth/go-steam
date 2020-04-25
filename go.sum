@@ -1,5 +1,5 @@
-github.com/13k/go-steam-resources v1.2.1 h1:z7nOY37wzLNQNZuVEXySe/yl2q0yDVNweOzPv2CJk7E=
-github.com/13k/go-steam-resources v1.2.1/go.mod h1:8E5ENdmiEEb4iAbTlSSRLVG+ca+jjiLJPE4JSEWs0Z4=
+github.com/13k/go-steam-resources v1.2.3 h1:K0RPeYIyjAD5E+DyO+gyTW6h40/PR24dxfnK0yG/Ea8=
+github.com/13k/go-steam-resources v1.2.3/go.mod h1:8E5ENdmiEEb4iAbTlSSRLVG+ca+jjiLJPE4JSEWs0Z4=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
