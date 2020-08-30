@@ -6,10 +6,11 @@ import (
 
 	pb "github.com/13k/go-steam-resources/protobuf/steam"
 	"github.com/13k/go-steam-resources/steamlang"
+	"google.golang.org/protobuf/proto"
+
 	"github.com/13k/go-steam/cryptoutil"
 	"github.com/13k/go-steam/protocol"
 	"github.com/13k/go-steam/steamid"
-	"google.golang.org/protobuf/proto"
 )
 
 type SentryHash []byte
@@ -125,6 +126,35 @@ func (a *Auth) LogOn(details *LogOnDetails) error {
 		logon.ObfuscatedPrivateIp = &pb.CMsgIPAddress{
 			Ip: &pb.CMsgIPAddress_V4{V4: details.LoginID},
 		}
+	}
+
+	msg := protocol.NewProtoMessage(steamlang.EMsg_ClientLogon, logon)
+
+	msg.SetSessionID(0)
+	msg.SetSteamID(steamID)
+
+	a.client.setSteamID(steamID)
+	a.client.Write(msg)
+
+	return nil
+}
+
+// LogOnAnonymous logs on with an anonymous user account
+func (a *Auth) LogOnAnonymous() error {
+	steamID := steamid.New(
+		steamlang.EAccountType_AnonUser,
+		steamlang.EUniverse_Public,
+		0,
+		steamid.UnknownInstance,
+	)
+
+	logon := &pb.CMsgClientLogon{
+		ProtocolVersion:           proto.Uint32(steamlang.MsgClientLogon_CurrentProtocol),
+		ClientLanguage:            proto.String(""),
+		EresultSentryfile:         proto.Int32(int32(steamlang.EResult_FileNotFound)),
+		SupportsRateLimitResponse: proto.Bool(false),
+		AnonUserTargetAccountName: proto.String("anonymous"),
+		ChatMode:                  proto.Uint32(2),
 	}
 
 	msg := protocol.NewProtoMessage(steamlang.EMsg_ClientLogon, logon)
