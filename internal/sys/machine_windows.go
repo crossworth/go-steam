@@ -10,13 +10,15 @@ import (
 )
 
 func MachineUUID() (uuid.UUID, error) {
-	// we use the output from the command `wmic csproduct get UUID`
-	cmd := exec.Command("wmic", "csproduct", "get", "UUID")
+	// we use the output from the command `reg query HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Cryptography /v MachineGuid`
+	cmd := exec.Command("reg", "query", `HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Cryptography`, "/v", "MachineGuid")
 	output, err := cmd.Output()
 	if err != nil {
 		return uuid.Nil, err
 	}
 
-	outputStr := strings.TrimSpace(strings.ReplaceAll(string(output), "UUID", ""))
-	return uuid.Parse(outputStr)
+	uuidStr := strings.ReplaceAll(string(output), `HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Cryptography`, "")
+	uuidStr = strings.ReplaceAll(uuidStr, "MachineGuid", "")
+	uuidStr = strings.ReplaceAll(uuidStr, "REG_SZ", "")
+	return uuid.Parse(strings.TrimSpace(uuidStr))
 }
