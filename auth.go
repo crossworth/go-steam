@@ -140,7 +140,7 @@ func (a *Auth) LogOn(details *LogOnDetails) error {
 }
 
 // LogOnAnonymous logs on with an anonymous user account
-func (a *Auth) LogOnAnonymous() error {
+func (a *Auth) LogOnAnonymous() {
 	steamID := steamid.New(
 		steamlang.EAccountType_AnonUser,
 		steamlang.EUniverse_Public,
@@ -150,7 +150,6 @@ func (a *Auth) LogOnAnonymous() error {
 
 	logon := &pb.CMsgClientLogon{
 		ProtocolVersion:           proto.Uint32(steamlang.MsgClientLogon_CurrentProtocol),
-		ClientLanguage:            proto.String(""),
 		EresultSentryfile:         proto.Int32(int32(steamlang.EResult_FileNotFound)),
 		SupportsRateLimitResponse: proto.Bool(false),
 		AnonUserTargetAccountName: proto.String("anonymous"),
@@ -164,8 +163,6 @@ func (a *Auth) LogOnAnonymous() error {
 
 	a.client.setSteamID(steamID)
 	a.client.Write(msg)
-
-	return nil
 }
 
 func (a *Auth) HandlePacket(packet *protocol.Packet) {
