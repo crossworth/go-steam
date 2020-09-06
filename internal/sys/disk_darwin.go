@@ -11,7 +11,7 @@ func RootDiskUUID() (uuid.UUID, error) {
 	devno, err := fsevents.DeviceForPath("/")
 
 	if err != nil {
-		return "", err
+		return uuid.Nil, err
 	}
 
 	uuidStr := fsevents.GetDeviceUUID(devno)

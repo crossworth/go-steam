@@ -141,7 +141,7 @@ func (a *Auth) LogOn(details *LogOnDetails) error {
 
 // LogOnAnonymous logs on with an anonymous user account on the global cell id
 // https://github.com/SteamDatabase/SteamTracking/blob/master/ClientExtracted/steam/cached/CellMap.vdf
-func (a *Auth) LogOnAnonymousOnGlobalCellID() error {
+func (a *Auth) LogOnAnonymousOnGlobalCellID() {
 	steamID := steamid.New(
 		steamlang.EAccountType_AnonUser,
 		steamlang.EUniverse_Public,
@@ -151,7 +151,6 @@ func (a *Auth) LogOnAnonymousOnGlobalCellID() error {
 
 	logon := &pb.CMsgClientLogon{
 		ProtocolVersion:           proto.Uint32(steamlang.MsgClientLogon_CurrentProtocol),
-		ClientLanguage:            proto.String(""),
 		EresultSentryfile:         proto.Int32(int32(steamlang.EResult_FileNotFound)),
 		SupportsRateLimitResponse: proto.Bool(false),
 		AnonUserTargetAccountName: proto.String("anonymous"),
@@ -166,8 +165,6 @@ func (a *Auth) LogOnAnonymousOnGlobalCellID() error {
 
 	a.client.setSteamID(steamID)
 	a.client.Write(msg)
-
-	return nil
 }
 
 func (a *Auth) HandlePacket(packet *protocol.Packet) {
