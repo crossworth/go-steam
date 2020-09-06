@@ -139,8 +139,9 @@ func (a *Auth) LogOn(details *LogOnDetails) error {
 	return nil
 }
 
-// LogOnAnonymous logs on with an anonymous user account
-func (a *Auth) LogOnAnonymous() error {
+// LogOnAnonymous logs on with an anonymous user account on the global cell id
+// https://github.com/SteamDatabase/SteamTracking/blob/master/ClientExtracted/steam/cached/CellMap.vdf
+func (a *Auth) LogOnAnonymousOnGlobalCellID() error {
 	steamID := steamid.New(
 		steamlang.EAccountType_AnonUser,
 		steamlang.EUniverse_Public,
@@ -155,6 +156,7 @@ func (a *Auth) LogOnAnonymous() error {
 		SupportsRateLimitResponse: proto.Bool(false),
 		AnonUserTargetAccountName: proto.String("anonymous"),
 		ChatMode:                  proto.Uint32(2),
+		CellId:                    proto.Uint32(0),
 	}
 
 	msg := protocol.NewProtoMessage(steamlang.EMsg_ClientLogon, logon)
