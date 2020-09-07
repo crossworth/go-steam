@@ -15,6 +15,7 @@ import (
 
 	pb "github.com/13k/go-steam-resources/protobuf/steam"
 	"github.com/13k/go-steam-resources/steamlang"
+
 	"github.com/13k/go-steam/cryptoutil"
 	"github.com/13k/go-steam/netutil"
 	"github.com/13k/go-steam/protocol"
@@ -82,6 +83,10 @@ func NewClient() *Client {
 // It is never closed.
 func (c *Client) Events() <-chan interface{} {
 	return c.events
+}
+
+func (c *Client) CloseEventsChannel() {
+	close(c.events)
 }
 
 func (c *Client) Emit(event interface{}) {
