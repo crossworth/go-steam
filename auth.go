@@ -211,6 +211,25 @@ func (a *Auth) handleLogOnResponse(packet *protocol.Packet) {
 			ClientSteamID:  steamid.SteamID(body.GetClientSuppliedSteamid()),
 			Body:           body,
 		})
+	case steamlang.EResult_AccountLogonDenied:
+		fallthrough
+	case steamlang.EResult_TwoFactorCodeMismatch:
+		fallthrough
+	case steamlang.EResult_AccountLoginDeniedNeedTwoFactor:
+		authCode := result == steamlang.EResult_AccountLogonDenied
+		twoFactorCode := result == steamlang.EResult_AccountLoginDeniedNeedTwoFactor
+		lastCodeWrong := false
+
+		if result == steamlang.EResult_TwoFactorCodeMismatch {
+			lastCodeWrong = true
+		}
+
+		a.client.Emit(&SteamGuardEvent{
+			AuthCode:      authCode,
+			TwoFactorCode: twoFactorCode,
+			Domain:        body.GetEmailDomain(),
+			LastCodeWrong: lastCodeWrong,
+		})
 	case steamlang.EResult_Fail, steamlang.EResult_ServiceUnavailable, steamlang.EResult_TryAnotherCM:
 		// some error on Steam's side, we'll get an EOF later
 		a.client.Emit(&FailureEvent{Result: result})
