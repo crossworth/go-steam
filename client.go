@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"hash/crc32"
+	"io"
 	"io/ioutil"
 	"net"
 	"sync"
@@ -83,10 +84,6 @@ func NewClient() *Client {
 // It is never closed.
 func (c *Client) Events() <-chan interface{} {
 	return c.events
-}
-
-func (c *Client) CloseEventsChannel() {
-	close(c.events)
 }
 
 func (c *Client) Emit(event interface{}) {
@@ -254,6 +251,9 @@ func (c *Client) readLoop() {
 		}
 
 		packet, err := conn.Read()
+		if err == io.EOF {
+			return
+		}
 
 		if err != nil {
 			c.Fatalf("client/read: error reading from the connection: %v", err)
