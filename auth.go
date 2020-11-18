@@ -36,6 +36,8 @@ type LogOnDetails struct {
 	// LoginID uniquely identifies a logon session (required if establishing more than one active
 	// session to the given account).
 	LoginID uint32
+	// MachineName is the name of the current Machine
+	MachineName string
 }
 
 type Auth struct {
@@ -90,16 +92,22 @@ func (a *Auth) LogOn(details *LogOnDetails) error {
 	)
 
 	logon := &pb.CMsgClientLogon{
-		ProtocolVersion:           proto.Uint32(steamlang.MsgClientLogon_CurrentProtocol),
-		AccountName:               proto.String(details.Username),
-		Password:                  proto.String(details.Password),
-		ShouldRememberPassword:    proto.Bool(details.ShouldRememberPassword),
-		ClientLanguage:            proto.String("english"),
-		ShaSentryfile:             details.SentryFileHash,
-		EresultSentryfile:         proto.Int32(int32(steamlang.EResult_FileNotFound)),
-		SupportsRateLimitResponse: proto.Bool(true),
-		ChatMode:                  proto.Uint32(2),
-		MachineId:                 machineIDAuth,
+		ProtocolVersion:                proto.Uint32(steamlang.MsgClientLogon_CurrentProtocol),
+		AccountName:                    proto.String(details.Username),
+		Password:                       proto.String(details.Password),
+		ShouldRememberPassword:         proto.Bool(details.ShouldRememberPassword),
+		ClientLanguage:                 proto.String("english"),
+		ShaSentryfile:                  details.SentryFileHash,
+		EresultSentryfile:              proto.Int32(int32(steamlang.EResult_FileNotFound)),
+		SupportsRateLimitResponse:      proto.Bool(true),
+		ChatMode:                       proto.Uint32(2),
+		MachineId:                      machineIDAuth,
+		SteamguardDontRememberComputer: proto.Bool(false),
+		MachineNameUserchosen:          proto.String(""),
+		CountryOverride:                proto.String(""),
+		IsSteamBox:                     proto.Bool(false),
+		ClientInstanceId:               proto.Uint64(0),
+		PriorityReason:                 proto.Int32(11),
 	}
 
 	if details.AuthCode != "" {
@@ -112,6 +120,10 @@ func (a *Auth) LogOn(details *LogOnDetails) error {
 
 	if details.LoginKey != "" {
 		logon.LoginKey = proto.String(details.LoginKey)
+	}
+
+	if details.MachineName != "" {
+		logon.MachineName = proto.String(details.MachineName)
 	}
 
 	if details.SentryFileHash != nil {
