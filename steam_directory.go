@@ -86,3 +86,15 @@ func (sd *steamDirectory) IsInitialized() bool {
 	defer sd.RUnlock()
 	return sd.isInitialized
 }
+
+func SetSteamDirectoryServers(servers []string) {
+	steamDirectoryCache.SetServers(servers)
+}
+
+// SetServers allows to update the server list.
+func (sd *steamDirectory) SetServers(servers []string) {
+	sd.Lock()
+	defer sd.Unlock()
+
+	sd.servers = servers
+}

@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"hash/crc32"
+	"io"
 	"io/ioutil"
 	"net"
 	"sync"
@@ -15,6 +16,7 @@ import (
 
 	pb "github.com/13k/go-steam-resources/protobuf/steam"
 	"github.com/13k/go-steam-resources/steamlang"
+
 	"github.com/13k/go-steam/cryptoutil"
 	"github.com/13k/go-steam/netutil"
 	"github.com/13k/go-steam/protocol"
@@ -249,6 +251,9 @@ func (c *Client) readLoop() {
 		}
 
 		packet, err := conn.Read()
+		if err == io.EOF {
+			return
+		}
 
 		if err != nil {
 			c.Fatalf("client/read: error reading from the connection: %v", err)

@@ -3,6 +3,7 @@ package steam
 import (
 	pb "github.com/13k/go-steam-resources/protobuf/steam"
 	"github.com/13k/go-steam-resources/steamlang"
+
 	"github.com/13k/go-steam/steamid"
 )
 
@@ -43,4 +44,12 @@ type AccountInfoEvent struct {
 // FailureEvent is emitted when Steam is down for some reason.
 type FailureEvent struct {
 	Result steamlang.EResult
+}
+
+// SteamGuardEvent is emitted when Steam request authCode or twoFactorCode.
+type SteamGuardEvent struct {
+	AuthCode      bool
+	TwoFactorCode bool
+	Domain        string
+	LastCodeWrong bool
 }

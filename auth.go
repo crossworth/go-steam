@@ -6,10 +6,11 @@ import (
 
 	pb "github.com/13k/go-steam-resources/protobuf/steam"
 	"github.com/13k/go-steam-resources/steamlang"
+	"google.golang.org/protobuf/proto"
+
 	"github.com/13k/go-steam/cryptoutil"
 	"github.com/13k/go-steam/protocol"
 	"github.com/13k/go-steam/steamid"
-	"google.golang.org/protobuf/proto"
 )
 
 type SentryHash []byte
@@ -35,6 +36,8 @@ type LogOnDetails struct {
 	// LoginID uniquely identifies a logon session (required if establishing more than one active
 	// session to the given account).
 	LoginID uint32
+	// MachineName is the name of the current Machine
+	MachineName string
 }
 
 type Auth struct {
@@ -89,16 +92,22 @@ func (a *Auth) LogOn(details *LogOnDetails) error {
 	)
 
 	logon := &pb.CMsgClientLogon{
-		ProtocolVersion:           proto.Uint32(steamlang.MsgClientLogon_CurrentProtocol),
-		AccountName:               proto.String(details.Username),
-		Password:                  proto.String(details.Password),
-		ShouldRememberPassword:    proto.Bool(details.ShouldRememberPassword),
-		ClientLanguage:            proto.String("english"),
-		ShaSentryfile:             details.SentryFileHash,
-		EresultSentryfile:         proto.Int32(int32(steamlang.EResult_FileNotFound)),
-		SupportsRateLimitResponse: proto.Bool(true),
-		ChatMode:                  proto.Uint32(2),
-		MachineId:                 machineIDAuth,
+		ProtocolVersion:                proto.Uint32(steamlang.MsgClientLogon_CurrentProtocol),
+		AccountName:                    proto.String(details.Username),
+		Password:                       proto.String(details.Password),
+		ShouldRememberPassword:         proto.Bool(details.ShouldRememberPassword),
+		ClientLanguage:                 proto.String("english"),
+		ShaSentryfile:                  details.SentryFileHash,
+		EresultSentryfile:              proto.Int32(int32(steamlang.EResult_FileNotFound)),
+		SupportsRateLimitResponse:      proto.Bool(true),
+		ChatMode:                       proto.Uint32(2),
+		MachineId:                      machineIDAuth,
+		SteamguardDontRememberComputer: proto.Bool(false),
+		MachineNameUserchosen:          proto.String(""),
+		CountryOverride:                proto.String(""),
+		IsSteamBox:                     proto.Bool(false),
+		ClientInstanceId:               proto.Uint64(0),
+		PriorityReason:                 proto.Int32(11),
 	}
 
 	if details.AuthCode != "" {
@@ -111,6 +120,10 @@ func (a *Auth) LogOn(details *LogOnDetails) error {
 
 	if details.LoginKey != "" {
 		logon.LoginKey = proto.String(details.LoginKey)
+	}
+
+	if details.MachineName != "" {
+		logon.MachineName = proto.String(details.MachineName)
 	}
 
 	if details.SentryFileHash != nil {
@@ -136,6 +149,34 @@ func (a *Auth) LogOn(details *LogOnDetails) error {
 	a.client.Write(msg)
 
 	return nil
+}
+
+// LogOnAnonymous logs on with an anonymous user account on the global cell id
+// https://github.com/SteamDatabase/SteamTracking/blob/master/ClientExtracted/steam/cached/CellMap.vdf
+func (a *Auth) LogOnAnonymousOnGlobalCellID() {
+	steamID := steamid.New(
+		steamlang.EAccountType_AnonUser,
+		steamlang.EUniverse_Public,
+		0,
+		steamid.UnknownInstance,
+	)
+
+	logon := &pb.CMsgClientLogon{
+		ProtocolVersion:           proto.Uint32(steamlang.MsgClientLogon_CurrentProtocol),
+		EresultSentryfile:         proto.Int32(int32(steamlang.EResult_FileNotFound)),
+		SupportsRateLimitResponse: proto.Bool(false),
+		AnonUserTargetAccountName: proto.String("anonymous"),
+		ChatMode:                  proto.Uint32(2),
+		CellId:                    proto.Uint32(0),
+	}
+
+	msg := protocol.NewProtoMessage(steamlang.EMsg_ClientLogon, logon)
+
+	msg.SetSessionID(0)
+	msg.SetSteamID(steamID)
+
+	a.client.setSteamID(steamID)
+	a.client.Write(msg)
 }
 
 func (a *Auth) HandlePacket(packet *protocol.Packet) {
@@ -181,6 +222,25 @@ func (a *Auth) handleLogOnResponse(packet *protocol.Packet) {
 			AccountFlags:   steamlang.EAccountFlags(body.GetAccountFlags()),
 			ClientSteamID:  steamid.SteamID(body.GetClientSuppliedSteamid()),
 			Body:           body,
+		})
+	case steamlang.EResult_AccountLogonDenied:
+		fallthrough
+	case steamlang.EResult_TwoFactorCodeMismatch:
+		fallthrough
+	case steamlang.EResult_AccountLoginDeniedNeedTwoFactor:
+		authCode := result == steamlang.EResult_AccountLogonDenied
+		twoFactorCode := result == steamlang.EResult_AccountLoginDeniedNeedTwoFactor
+		lastCodeWrong := false
+
+		if result == steamlang.EResult_TwoFactorCodeMismatch {
+			lastCodeWrong = true
+		}
+
+		a.client.Emit(&SteamGuardEvent{
+			AuthCode:      authCode,
+			TwoFactorCode: twoFactorCode,
+			Domain:        body.GetEmailDomain(),
+			LastCodeWrong: lastCodeWrong,
 		})
 	case steamlang.EResult_Fail, steamlang.EResult_ServiceUnavailable, steamlang.EResult_TryAnotherCM:
 		// some error on Steam's side, we'll get an EOF later

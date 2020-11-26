@@ -25,42 +25,11 @@ type MachineID struct {
 }
 
 func NewMachineID() (*MachineID, error) {
-	machineUUID, err := sys.MachineUUID()
-
-	if err != nil {
-		return nil, err
-	}
-
-	if len(machineUUID) == 0 {
-		machineUUID = sys.DefaultMachineUUID
-	}
-
-	iface, err := sys.FirstPublicInterface()
-
-	if err != nil {
-		return nil, err
-	}
-
-	macAddr := sys.DefaultMACAddress
-
-	if iface != nil {
-		macAddr = iface.HardwareAddr
-	}
-
-	diskUUID, err := sys.RootDiskUUID()
-
-	if err != nil {
-		return nil, err
-	}
-
-	if len(diskUUID) == 0 {
-		diskUUID = sys.DefaultDiskUUID
-	}
 
 	mid := &MachineID{
-		MachineUUID: machineUUID,
-		MacAddress:  macAddr,
-		DiskUUID:    diskUUID,
+		MachineUUID: uuid.Nil,
+		MacAddress:  sys.DefaultMACAddress,
+		DiskUUID:    uuid.Nil,
 	}
 
 	return mid, nil
