@@ -16,7 +16,13 @@ import (
 // Call InitializeSteamDirectory() before Connect() to use
 // steam directory server list instead of static one.
 func InitializeSteamDirectory() error {
-	return steamDirectoryCache.Initialize()
+	return steamDirectoryCache.Initialize(0)
+}
+
+// InitializeSteamDirectoryWithCellID
+// loads the initial server list from Steam Directory Web API for the provided Cell ID
+func InitializeSteamDirectoryWithCellID(cellID uint32) error {
+	return steamDirectoryCache.Initialize(cellID)
 }
 
 var steamDirectoryCache *steamDirectory = &steamDirectory{}
@@ -28,12 +34,12 @@ type steamDirectory struct {
 }
 
 // Get server list from steam directory and save it for later
-func (sd *steamDirectory) Initialize() error {
+func (sd *steamDirectory) Initialize(cellID uint32) error {
 	sd.Lock()
 	defer sd.Unlock()
 
 	client := &http.Client{}
-	resp, err := client.Get("https://api.steampowered.com/ISteamDirectory/GetCMList/v1/?cellid=0")
+	resp, err := client.Get(fmt.Sprintf("https://api.steampowered.com/ISteamDirectory/GetCMList/v1/?cellid=%d", cellID))
 
 	if err != nil {
 		return err
