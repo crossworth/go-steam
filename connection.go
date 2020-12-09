@@ -162,7 +162,7 @@ func (c *tcpConnection) decrypt(message []byte) []byte {
 	c.cipherMutex.RLock()
 	defer c.cipherMutex.RUnlock()
 
-	if c.ciph != nil && len(message)%aes.BlockSize == 0 {
+	if c.ciph != nil {
 		message = cryptoutil.SymmetricDecrypt(c.ciph, message)
 	}
 
